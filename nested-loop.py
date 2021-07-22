@@ -3,19 +3,20 @@ import numpy as np
 import pandas as pd
 import operator
 import time
-from kmincutunionfind import karger_min_cut
+# from kmincutunionfind import karger_min_cut
+from kmincut import fast_min_cut, Graph
 
 
-class Graph:
-    def __init__(self):
-        self.vertices = set()
-        self.edges = []
+# class Graph:
+#     def __init__(self):
+#         self.vertices = set()
+#         self.edges = []
 
 
-class Edge:
-    def __init__(self, src, dest):
-        self.src = src
-        self.dest = dest
+# class Edge:
+#     def __init__(self, src, dest):
+#         self.src = src
+#         self.dest = dest
 
 
 def load_data():
@@ -53,7 +54,7 @@ def nested_loop_join(datalistR, datalistS, conditions, block_size, num_blocks, n
                         # add egeds to graph
                         src = "r" + str(tuple_r[0]) + "," + str(tuple_r[1])
                         dest = "s" + str(tuple_s[0]) + "," + str(tuple_s[1])
-                        edge = Edge(src, dest)
+                        # edge = Edge(src, dest)
                         # g.vertices.add(src)
                         # g.vertices.add(dest)
                         # g.edges.append(edge)
@@ -91,11 +92,14 @@ def join():
     conditions = [[2, 2, "<"]]
     join_results, no_of_vertices = nested_loop_join(datalistR, datalistS, conditions, block_size,
                                                     num_blocks, num_columns, g)
+    graph_list = []
     for item in g.items():
-        print(item[0])
-        print(item[1])
+        graphs = [item[0]] + item[1]
+        graph_list.append(graphs)
+
+    # print(graph_list)
     # print("no of vertices:", no_of_vertices)
-    return join_results, join_results.shape, g, no_of_vertices
+    return join_results, join_results.shape, graph_list, no_of_vertices
 
 
 start = time.time()
@@ -105,6 +109,8 @@ k = 2
 # print("\n\nCut found by Karger's randomized algo is {}".format(
 #     karger_min_cut(g, k, no_of_vertices)))
 # karger_min_cut(g, k, no_of_vertices)
+graph = Graph(g)
+print(fast_min_cut(graph))
 end = time.time()
 
 print("running time:", end-start)
