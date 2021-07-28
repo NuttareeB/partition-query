@@ -69,8 +69,10 @@ def nested_loop_join(datalistR, datalistS, conditions, block_size, num_blocks, n
 
 
 def join():
+    start = time.time()
     datalist = load_data()
-    datalist = datalist[0:200, :]
+    print("running time load data", time.time()-start)
+    datalist = datalist[0:2000, :]
     num_rows = np.shape(datalist)[0]
     num_columns = np.shape(datalist)[1]
 
@@ -86,12 +88,15 @@ def join():
     # from releasedate r1 join releasedate r2
     #     on r1.releasedate < r2.releasedate
 
+    start = time.time()
     # TODO: make this flexible to accept any queries
     datalistR = datalist
     datalistS = datalist.copy()
     conditions = [[2, 2, "<"]]
     join_results, no_of_vertices = nested_loop_join(datalistR, datalistS, conditions, block_size,
                                                     num_blocks, num_columns, g)
+
+    print("running time nested loop join", time.time()-start)
     graph_list = []
     for item in g.items():
         graphs = [item[0]] + item[1]
@@ -109,8 +114,15 @@ k = 2
 # print("\n\nCut found by Karger's randomized algo is {}".format(
 #     karger_min_cut(g, k, no_of_vertices)))
 # karger_min_cut(g, k, no_of_vertices)
+end = time.time()
+print("running time load + nested loop join", end-start)
+
+start = time.time()
 graph = Graph(g)
+end = time.time()
+print("running time construct graph", end-start)
+
+start = time.time()
 print(fast_min_cut(graph))
 end = time.time()
-
-print("running time:", end-start)
+print("running time min cut:", end-start, "\n")
