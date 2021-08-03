@@ -50,7 +50,12 @@ def nested_loop_join(datalistR, datalistS, conditions, block_size, R_num_blocks,
                     right = conditions[0][1]
 
                     # TODO: remove hard code
-                    if normalized_levenshtein.distance(datalistR[tR][left], datalistS[tS][right]) > 0.7:
+                    similarity_score = normalized_levenshtein.distance(
+                        datalistR[tR][left], datalistS[tS][right])
+                    if similarity_score < 0.60:
+
+                        print(similarity_score, ": ",
+                              datalistR[tR][left], ": ", datalistS[tS][right])
                         # if datalistR[tR][1] == 2 and get_operator(sign)(datalistR[tR][left], datalistS[tS][right]):
                         tuple_r = datalistR[tR]
                         tuple_s = datalistS[tS]
@@ -73,8 +78,8 @@ def nested_loop_join(datalistR, datalistS, conditions, block_size, R_num_blocks,
 
 
 def join(R, S):
-    R = R[0:200, :]
-    S = S[0:200, :]
+    R = R[0:2000, :]
+    S = S[0:2000, :]
     R_num_rows = np.shape(R)[0]
     R_num_columns = np.shape(R)[1]
 
@@ -128,12 +133,12 @@ k = 2
 end = time.time()
 print("running time nested loop join", end-start)
 
-# start = time.time()
-# graph = Graph(g)
-# end = time.time()
-# print("running time construct graph", end-start)
+start = time.time()
+graph = Graph(g)
+end = time.time()
+print("running time construct graph", end-start)
 
-# start = time.time()
-# print(fast_min_cut(graph))
-# end = time.time()
-# print("running time min cut:", end-start, "\n")
+start = time.time()
+print(fast_min_cut(graph, k))
+end = time.time()
+print("running time min cut:", end-start, "\n")
