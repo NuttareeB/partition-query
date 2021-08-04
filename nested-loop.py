@@ -4,7 +4,7 @@ import pandas as pd
 import operator
 import time
 # from kmincutunionfind import karger_min_cut
-from kmincut import fast_min_cut, Graph
+from kmincut import contract, fast_min_cut, Graph
 
 
 # class Graph:
@@ -72,7 +72,7 @@ def join():
     start = time.time()
     datalist = load_data()
     print("running time load data", time.time()-start)
-    datalist = datalist[0:2000, :]
+    datalist = datalist[0:200, :]
     num_rows = np.shape(datalist)[0]
     num_columns = np.shape(datalist)[1]
 
@@ -110,7 +110,7 @@ def join():
 start = time.time()
 join_results, result_shape, g, no_of_vertices = join()
 # print(join_results, result_shape)
-k = 2
+k = 20
 # print("\n\nCut found by Karger's randomized algo is {}".format(
 #     karger_min_cut(g, k, no_of_vertices)))
 # karger_min_cut(g, k, no_of_vertices)
@@ -122,7 +122,21 @@ graph = Graph(g)
 end = time.time()
 print("running time construct graph", end-start)
 
+m = graph.edge_count
+n = graph.vertex_count
+print("m:", m)
+print("n:", n)
+
+# print(graph.verts)
+
 start = time.time()
-print(fast_min_cut(graph))
+# m, gout = fast_min_cut(graph, k)
+gout, groups = contract(graph, k)
+# print()
+# print(gout.verts)
+print(gout.edges)
+print()
+print(gout.groups)
+print()
 end = time.time()
 print("running time min cut:", end-start, "\n")

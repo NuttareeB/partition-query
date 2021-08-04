@@ -4,7 +4,7 @@ from __future__ import division
 import random
 import math
 import copy
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime
 
 # Implement contraction using Counter objects
@@ -13,7 +13,16 @@ from datetime import datetime
 class Graph(object):
     def __init__(self, vlist):
         self.verts = {v[0]: Counter(v[1:]) for v in vlist}
-        print("verttttt:", self.verts)
+        # print("verttttt:", self.verts["r667,2"])
+        # print("verttttt:", list(sorted(list(self.verts["r667,2"].keys())))[0])
+        # self.parents = {k: list(sorted(list(self.verts[k].keys())))[0]
+        #                 for k in self.verts.keys()}
+        self.parents = {k: k for k in self.verts.keys()}
+        self.groups = defaultdict(list)
+        for k, v in self.parents.items():
+            self.groups[v].append(k)
+
+        # print("parents:", self.parents)
         self.update_edges()
 
     def update_edges(self):
@@ -22,6 +31,13 @@ class Graph(object):
         for k, v in self.verts.items():
             self.edges += ([(k, t) for t in v.keys()
                            for n in range(v[t]) if k < t])
+
+        # print("before edge:", self.edges)
+        # print()
+        self.edges = list(set(self.edges))
+
+        # print("after edge:", self.edges)
+        # print()
 
     @property
     def vertex_count(self):
@@ -32,9 +48,35 @@ class Graph(object):
         return len(self.edges)
 
     def merge_vertices(self, edge_index):
+        # print("edge_index:", edge_index)
+        # print("edge:", self.edges)
+        # print("edge_count:", self.edge_count)
         hi, ti = self.edges[edge_index]
+
+        # print()
         # print("head:", hi)
         # print("tail:", ti)
+
+        # print()
+        # print("original group vertices:\t\t\t", self.parents)
+        # print()
+        # print("original vertices:\t\t\t\t", self.verts)
+        # print()
+
+        # if self.groups[hi] > self.groups[ti]:
+
+        if self.parents[hi] > self.parents[ti]:
+            self.parents[hi] = self.parents[ti]
+            for key in self.groups[hi]:
+                self.parents[key] = self.parents[ti]
+            self.groups[ti] += self.groups[hi]
+            del self.groups[hi]
+        else:
+            self.parents[ti] = self.parents[hi]
+            for key in self.groups[ti]:
+                self.parents[key] = self.parents[hi]
+            self.groups[hi] += self.groups[ti]
+            del self.groups[ti]
 
         head = self.verts[hi]
         tail = self.verts[ti]
@@ -43,12 +85,16 @@ class Graph(object):
         del head[ti]
         del tail[hi]
 
+        # print("updated group vertices:\t\t\t\t", self.parents)
+        # print()
         # print("updated vertices:\t\t\t\t", self.verts)
+        # print()
 
         # Merge tails
         head.update(tail)
 
         # print("updated vertices after update:\t\t\t", self.verts)
+        # print()
 
         # Update all the neighboring vertices of the fused vertex
         for i in tail.keys():
@@ -57,6 +103,7 @@ class Graph(object):
             del v[ti]
 
         # print("updated vertices after update neighboring:\t", self.verts)
+        # print()
 
         # Finally remove the tail vertex
         del self.verts[ti]
@@ -66,7 +113,8 @@ class Graph(object):
         # print(self.edges, "\n")
 
 
-def contract(graph, min_v=3):
+def contract(graph, min_v=5):
+    # min_v = 2
     g = copy.deepcopy(graph)
     while g.vertex_count > min_v:
         # print("g:", g.verts)
@@ -75,33 +123,51 @@ def contract(graph, min_v=3):
         # print("random:", r)
         g.merge_vertices(r)
 
-    return g
+    # parents = g.parents
+    # groups = defaultdict(list)
+    # for k, v in parents.items():
+    #     groups[v].append(k)
+    return g, g.groups
 
 # Karger's Algorithm
 # For failure probabilty upper bound of 1/n, repeat the algorithm nC2 logn times
 
 
-def min_cut(graph):
+def min_cut(graph, k):
     m = graph.edge_count
+    min_g = graph
     n = graph.vertex_count
     for i in range(int(n * (n-1) * math.log(n)/2)):
         random.seed(datetime.now())
-        g = contract(graph)
-        m = min(m, g.edge_count)
+        g, groups = contract(graph, k)
+        if g.edge_count < m:
+            # print("g.edge_count < m", g.edge_count, m)
+            m = g.edge_count
+            min_g = g
+        # m = min(m, g.edge_count)
         # print(i, m)
-    return m, g
+    return m, min_g
+
+# https://www.cc.gatech.edu/~vigoda/6550/Notes/Lec1.pdf
 
 
-def _fast_min_cut(graph):
+def calculate_minimum_acceptable_v(k):
+    print((k-1)*math.sqrt(2))
+    print("ceil:", math.ceil((k-1)*math.sqrt(2)))
+    return math.ceil((k-1)*math.sqrt(2))
+
+
+def _fast_min_cut(graph, k, min_acceptable_v):
     if graph.vertex_count <= 6:
-        return min_cut(graph)
+        return min_cut(graph, k)
     else:
         t = math.floor(1 + graph.vertex_count / math.sqrt(2))
-        g1 = contract(graph, t)
-        g2 = contract(graph, t)
+        # t = 2
+        g1, groups1 = contract(graph, t)
+        g2, groups2 = contract(graph, t)
 
-        _m1, _g1 = _fast_min_cut(g1)
-        _m2, _g2 = _fast_min_cut(g2)
+        _m1, _g1 = _fast_min_cut(g1, k, min_acceptable_v)
+        _m2, _g2 = _fast_min_cut(g2, k, min_acceptable_v)
         if _m1 < _m2:
             return _m1, _g1
         else:
@@ -111,25 +177,31 @@ def _fast_min_cut(graph):
 # For failure probabilty upper bound of 1/n, repeat the algorithm nlogn/(n - 1) times
 
 
-def fast_min_cut(graph):
-    print(graph.verts)
+def fast_min_cut(graph, k):
+    min_acceptable_v = calculate_minimum_acceptable_v(k)
+    print("min_acceptable_v:", min_acceptable_v)
+    # print(graph.verts)
     m = graph.edge_count
     n = graph.vertex_count
     final_g = graph
-    # print("m:", m)
-    # print("n:", n)
+    print("m:", m)
+    print("n:", n)
     for i in range(int(n * math.log(n)/(n - 1))):
         random.seed(datetime.now())
-        _m, g = _fast_min_cut(graph)
+        _m, g = _fast_min_cut(graph, k, min_acceptable_v)
         if _m < m:
             m = _m
             final_g = g
         # m = min(m, _m)
         # print(i, m)
-    # print(graph.verts)
-    return m, final_g.edges, final_g.verts
+    # print(final_g)
+    return m, final_g
 
 
 # Simple test
-graph = Graph([[1, 2, 3], [2, 1, 3, 4], [3, 1, 2, 4], [4, 2, 3]])
-print(fast_min_cut(graph))
+# graph = Graph([[1, 2, 3], [2, 1, 3, 4], [3, 1, 2, 4], [4, 2, 3]])
+# # print(fast_min_cut(graph, 3))
+# gout, groups = contract(graph, 2)
+# print(gout.verts)
+# print(gout.edges)
+# print(groups)
