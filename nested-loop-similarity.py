@@ -1,10 +1,11 @@
 from collections import defaultdict
+from preprocessing import preprocessing_releasedate
 import numpy as np
 import pandas as pd
 import operator
 import time
 # from kmincutunionfind import karger_min_cut
-from kmincut import fast_min_cut, Graph
+from kmincut import contract, fast_min_cut, Graph
 from strsimpy import NormalizedLevenshtein
 import math
 import gc
@@ -19,16 +20,19 @@ num_tuples = 100
 R = "releasedates.csv"
 S = "releasedates.csv"
 
+
 def load_data(filename):
     df = pd.read_csv(filename, sep=',', header=None, skiprows=1)
     datalist = np.array(df)
     return datalist
 
+
 def load_data_batch(filename, bRS, block_size, num_blocks):
     #print("loading batches")
-    df = pd.read_csv(filename, skiprows= bRS, nrows=bRS+block_size)
+    df = pd.read_csv(filename, skiprows=bRS, nrows=bRS+block_size)
     datalist = np.array(df)
     return datalist
+
 
 def get_operator(comparison_operator):
     comparison_operator_dict = {
@@ -39,7 +43,14 @@ def get_operator(comparison_operator):
         "<=": operator.le}
     return comparison_operator_dict[comparison_operator]
 
+
+datalistR = []
+datalistS = []
+
+
 def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g):
+    global datalistR
+    global datalistS
     output = []
     # each block
     for bR in range(0, R_num_blocks * block_size, block_size):
@@ -89,7 +100,8 @@ def join(num_tuples, block_size):
 
     # TODO: make this flexible to accept any queries
     conditions = [[2, 2, "<"]]
-    join_results, no_of_vertices = nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g)
+    join_results, no_of_vertices = nested_loop_join(
+        num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g)
 
     graph_list = []
     for item in g.items():
@@ -121,7 +133,10 @@ print("running time construct graph", end-start)
 
 start = time.time()
 #print(fast_min_cut(graph, k))
-#print(fast_min_cut(graph))
-fast_min_cut(graph)
+# print(fast_min_cut(graph))
+gout, groups = contract(graph, k)
+# print(gout.parents)
 end = time.time()
 print("running time min cut:", end-start, "\n")
+
+preprocessing_releasedate(datalistR, gout.parents)
