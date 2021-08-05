@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 
 
-def preprocessing_releasedate(datalist, parents, relation_type, k):
+def preprocessing_releasedate(datalist, parents, relation_type, k, block_size, trainXfilename, trainYfilename):
+    print("preprocessing_releasedate:", datalist.shape)
     labels = []
     datalist = np.array(datalist)
     dates = []
@@ -30,11 +31,10 @@ def preprocessing_releasedate(datalist, parents, relation_type, k):
 
     newdatalist = np.concatenate((newdatalist, np.expand_dims(labels, 1)), 1)
 
-    print(newdatalist[:150])
-    print(bin_data)
+    # print(newdatalist[:150])
+    # print(bin_data)
 
-    bin_data.to_csv('data/preprocessed.trainX.' +
-                    str(bin_data.size)+'.'+str(k), sep=",", index=False)
-    pd.DataFrame(labels, columns=["label"]).to_csv('data/preprocessed.trainY.' +
-                                                   str(bin_data.size)+'.'+str(k), sep=",", index=False)
+    bin_data.to_csv(trainXfilename, sep=",", index=False)
+    pd.DataFrame(labels, columns=["label"]).to_csv(
+        trainYfilename, sep=",", index=False)
     return bin_data, labels

@@ -10,13 +10,9 @@ import time
 from kmincut import contract, fast_min_cut, Graph
 from strsimpy import NormalizedLevenshtein
 import math
-import gc
+from os import path
 
 normalized_levenshtein = NormalizedLevenshtein()
-
-# Hyper Parameters
-block_size = 4
-num_tuples = 1000
 
 # Filename
 R = "releasedates.csv"
@@ -54,7 +50,6 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
     global all_R
     global all_S
     output = []
-    cnt = 0
     # each block
     for bR in range(0, R_num_blocks * block_size, block_size):
         # call function to get 1 block of data from R
@@ -66,13 +61,11 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
         for bS in range(0, S_num_blocks * block_size, block_size):
             # call function to get 1 block of data from S
             datalistS = load_data_batch(S, bS, block_size, S_num_blocks)
-            if isinstance(all_S, np.ndarray):
-                all_S = np.concatenate((all_S, datalistS), 0)
-            else:
-                all_S = datalistS
-            cnt += 1
-            if cnt == 5:
-                break
+            if bR == 0:
+                if isinstance(all_S, np.ndarray):
+                    all_S = np.concatenate((all_S, datalistS), 0)
+                else:
+                    all_S = datalistS
             # each tuple
             for tR in range(0, block_size):
                 for tS in range(0, block_size):
@@ -126,36 +119,67 @@ def join(num_tuples, block_size):
     return join_results, join_results.shape, graph_list, no_of_vertices
 
 
-# start = time.time()
-# used to load the whole file
-# print("running time load data", time.time()-start)
+def run(num_tuples, block_size, kmin_k, knn_k):
+    sufflix = str(num_tuples)+'.'+str(block_size)+'.'+str(kmin_k)
+    RtrainXfilename = 'data/r-trainX.' + sufflix
+    RtrainYfilename = 'data/r-trainY.' + sufflix
+    StrainXfilename = 'data/s-trainX.' + sufflix
+    StrainYfilename = 'data/s-trainY.' + sufflix
 
-start = time.time()
-join_results, result_shape, g, no_of_vertices = join(num_tuples, block_size)
-# print(join_results, result_shape)
-k = 200
-# print("\n\nCut found by Karger's randomized algo is {}".format(
-#     karger_min_cut(g, k, no_of_vertices)))
-# karger_min_cut(g, k, no_of_vertices)
-end = time.time()
-print("running time nested loop join", end-start)
+    x_train_r = None
+    y_train_r = None
+    x_train_s = None
+    y_train_s = None
+    if not path.exists(RtrainXfilename) or not path.exists(RtrainYfilename):
+        print("not exist")
+        # start = time.time()
+        # used to load the whole file
+        # print("running time load data", time.time()-start)
 
-start = time.time()
-graph = Graph(g)
-end = time.time()
-print("running time construct graph", end-start)
+        start = time.time()
+        join_results, result_shape, g, no_of_vertices = join(
+            num_tuples, block_size)
+        # print(join_results, result_shape)
+        # print("\n\nCut found by Karger's randomized algo is {}".format(
+        #     karger_min_cut(g, k, no_of_vertices)))
+        # karger_min_cut(g, k, no_of_vertices)
+        end = time.time()
+        print("running time nested loop join", end-start)
 
-print(graph.edge_count)
-print(graph.vertex_count)
-start = time.time()
-# print(fast_min_cut(graph, k))
-# print(fast_min_cut(graph))
-gout, groups = contract(graph, k)
-# print(gout.parents)
-end = time.time()
-print("running time min cut:", end-start, "\n")
+        start = time.time()
+        graph = Graph(g)
+        end = time.time()
+        print("running time construct graph", end-start)
 
-x_train, y_train = preprocessing_releasedate(all_R, gout.parents, "r", k)
+        print(graph.edge_count)
+        print(graph.vertex_count)
+        start = time.time()
+        # print(fast_min_cut(graph, k))
+        # print(fast_min_cut(graph))
+        gout, groups = contract(graph, kmin_k)
+        # print(gout.parents)
+        end = time.time()
+        print("running time min cut:", end-start, "\n")
 
-knn(x_train, y_train)
-# preprocessing_releasedate(datalistR, gout.parents, "s")
+        x_train_r, y_train_r = preprocessing_releasedate(
+            all_R, gout.parents, "r", kmin_k, block_size, RtrainXfilename, RtrainYfilename)
+
+        x_train_s, y_train_s = preprocessing_releasedate(
+            all_S, gout.parents, "s", kmin_k, block_size, StrainXfilename, StrainYfilename)
+    else:
+        x_train_r = pd.read_csv(RtrainXfilename, sep=',')
+        y_train_r = pd.read_csv(RtrainYfilename, sep=',').values.ravel()
+
+        x_train_s = pd.read_csv(StrainXfilename, sep=',')
+        y_train_s = pd.read_csv(StrainYfilename, sep=',').values.ravel()
+
+    r_train_acc, r_test_acc = knn(x_train_r, y_train_r, knn_k)
+    s_train_acc, s_test_acc = knn(x_train_s, y_train_s, knn_k)
+
+    print("R train accuracy:", str(r_train_acc), "%")
+    print("R test accuracy:", str(r_test_acc), "%")
+    print("S train accuracy:", str(s_train_acc), "%")
+    print("S test accuracy:", str(s_test_acc), "%")
+
+
+run(100, 4, 20, 3)
