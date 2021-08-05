@@ -214,6 +214,3 @@ def run(num_tuples, block_size, kmin_k):
     print("R test accuracy:", str(r_test_acc), "%")
     print("S train accuracy:", str(s_train_acc), "%")
     print("S test accuracy:", str(s_test_acc), "%")
-
-
-run(100, 4, 20)
