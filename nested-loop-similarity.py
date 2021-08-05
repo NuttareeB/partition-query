@@ -119,62 +119,91 @@ def join(num_tuples, block_size):
     return join_results, join_results.shape, graph_list, no_of_vertices
 
 
-def run(num_tuples, block_size, kmin_k, knn_k):
+def run(num_tuples, block_size, kmin_k):
     sufflix = str(num_tuples)+'.'+str(block_size)+'.'+str(kmin_k)
     RtrainXfilename = 'data/r-trainX.' + sufflix
     RtrainYfilename = 'data/r-trainY.' + sufflix
     StrainXfilename = 'data/s-trainX.' + sufflix
     StrainYfilename = 'data/s-trainY.' + sufflix
 
+    resultfilename = 'res/' + sufflix
+
     x_train_r = None
     y_train_r = None
     x_train_s = None
     y_train_s = None
-    if not path.exists(RtrainXfilename) or not path.exists(RtrainYfilename):
-        print("not exist")
-        # start = time.time()
-        # used to load the whole file
-        # print("running time load data", time.time()-start)
+    # if not path.exists(RtrainXfilename) or not path.exists(RtrainYfilename):
 
-        start = time.time()
-        join_results, result_shape, g, no_of_vertices = join(
-            num_tuples, block_size)
-        # print(join_results, result_shape)
-        # print("\n\nCut found by Karger's randomized algo is {}".format(
-        #     karger_min_cut(g, k, no_of_vertices)))
-        # karger_min_cut(g, k, no_of_vertices)
-        end = time.time()
-        print("running time nested loop join", end-start)
+    # start = time.time()
+    # used to load the whole file
+    # print("running time load data", time.time()-start)
 
-        start = time.time()
-        graph = Graph(g)
-        end = time.time()
-        print("running time construct graph", end-start)
+    start = time.time()
+    join_results, result_shape, g, no_of_vertices = join(
+        num_tuples, block_size)
+    # print(join_results, result_shape)
+    # print("\n\nCut found by Karger's randomized algo is {}".format(
+    #     karger_min_cut(g, k, no_of_vertices)))
+    # karger_min_cut(g, k, no_of_vertices)
+    end = time.time()
+    nested_loop_join_time = end-start
+    print("running time nested loop join", nested_loop_join_time)
 
-        print(graph.edge_count)
-        print(graph.vertex_count)
-        start = time.time()
-        # print(fast_min_cut(graph, k))
-        # print(fast_min_cut(graph))
-        gout, groups = contract(graph, kmin_k)
-        # print(gout.parents)
-        end = time.time()
-        print("running time min cut:", end-start, "\n")
+    start = time.time()
+    graph = Graph(g)
+    end = time.time()
 
-        x_train_r, y_train_r = preprocessing_releasedate(
-            all_R, gout.parents, "r", kmin_k, block_size, RtrainXfilename, RtrainYfilename)
+    construct_graph_time = end-start
+    print("running time construct graph", construct_graph_time)
 
-        x_train_s, y_train_s = preprocessing_releasedate(
-            all_S, gout.parents, "s", kmin_k, block_size, StrainXfilename, StrainYfilename)
-    else:
-        x_train_r = pd.read_csv(RtrainXfilename, sep=',')
-        y_train_r = pd.read_csv(RtrainYfilename, sep=',').values.ravel()
+    # print(graph.edge_count)
+    # print(graph.vertex_count)
+    start = time.time()
+    # print(fast_min_cut(graph, k))
+    # print(fast_min_cut(graph))
+    gout, groups = contract(graph, kmin_k)
+    # print(gout.parents)
+    end = time.time()
+    min_cut_time = end-start
+    print("running time min cut:", min_cut_time, "\n")
 
-        x_train_s = pd.read_csv(StrainXfilename, sep=',')
-        y_train_s = pd.read_csv(StrainYfilename, sep=',').values.ravel()
+    x_train_r, y_train_r = preprocessing_releasedate(
+        all_R, gout.parents, "r", kmin_k, block_size, RtrainXfilename, RtrainYfilename)
 
-    r_train_acc, r_test_acc = knn(x_train_r, y_train_r, knn_k)
-    s_train_acc, s_test_acc = knn(x_train_s, y_train_s, knn_k)
+    x_train_s, y_train_s = preprocessing_releasedate(
+        all_S, gout.parents, "s", kmin_k, block_size, StrainXfilename, StrainYfilename)
+
+    # else:
+    #     x_train_r = pd.read_csv(RtrainXfilename, sep=',')
+    #     y_train_r = pd.read_csv(RtrainYfilename, sep=',').values.ravel()
+
+    #     x_train_s = pd.read_csv(StrainXfilename, sep=',')
+    #     y_train_s = pd.read_csv(StrainYfilename, sep=',').values.ravel()
+
+    knn_k_list = [3, 5, 10, 20, 50, 100, 200, 500]
+    results = []
+    for knn_k in knn_k_list:
+        if knn_k < num_tuples:
+            r_train_acc, r_test_acc = knn(x_train_r, y_train_r, knn_k)
+            s_train_acc, s_test_acc = knn(x_train_s, y_train_s, knn_k)
+            results.append(
+                (str(knn_k), str(r_train_acc), str(
+                    r_test_acc), str(s_train_acc), str(s_test_acc)))
+
+    with open(resultfilename, 'w') as f:
+        f.write("nested_loop_join_time:" + str(nested_loop_join_time))
+        f.write('\n')
+        f.write("construct_graph_time:" + str(construct_graph_time))
+        f.write('\n')
+        f.write("min_cut_time:" + str(min_cut_time))
+        f.write('\n')
+        f.write('\n')
+        for r in results:
+            f.write("k = " + r[0]+"----------")
+            f.write('\n')
+            for val in r:
+                f.write(val)
+                f.write('\n')
 
     print("R train accuracy:", str(r_train_acc), "%")
     print("R test accuracy:", str(r_test_acc), "%")
@@ -182,4 +211,4 @@ def run(num_tuples, block_size, kmin_k, knn_k):
     print("S test accuracy:", str(s_test_acc), "%")
 
 
-run(100, 4, 20, 3)
+run(100, 4, 20)

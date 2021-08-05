@@ -3,7 +3,7 @@ import pandas as pd
 
 
 def preprocessing_releasedate(datalist, parents, relation_type, k, block_size, trainXfilename, trainYfilename):
-    print("preprocessing_releasedate:", datalist.shape)
+    # print("preprocessing_releasedate:", datalist.shape)
     labels = []
     datalist = np.array(datalist)
     dates = []
