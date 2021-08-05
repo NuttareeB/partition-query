@@ -1,4 +1,4 @@
 import numpy as np
 from nestedloop import run
 
-run(100, 20, 200)
+run(1000, 20, 200)
