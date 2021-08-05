@@ -187,19 +187,24 @@ def run(num_tuples, block_size, kmin_k):
             r_train_acc, r_test_acc = knn(x_train_r, y_train_r, knn_k)
             s_train_acc, s_test_acc = knn(x_train_s, y_train_s, knn_k)
             results.append(
-                (str(knn_k), str(r_train_acc), str(
-                    r_test_acc), str(s_train_acc), str(s_test_acc)))
+                ("k of knn = " + str(knn_k)+"----------", "r_train_acc\t" + str(r_train_acc), "r_test_acc\t" + str(
+                    r_test_acc), "s_train_acc\t" + str(s_train_acc), "s_test_acc\t" + str(s_test_acc)))
 
     with open(resultfilename, 'w') as f:
-        f.write("nested_loop_join_time:" + str(nested_loop_join_time))
+        f.write("tuple size:\t\t\t\t" + str(num_tuples))
         f.write('\n')
-        f.write("construct_graph_time:" + str(construct_graph_time))
+        f.write("block size:\t\t\t\t" + str(block_size))
         f.write('\n')
-        f.write("min_cut_time:" + str(min_cut_time))
+        f.write("k of k-min cut:\t\t\t" + str(kmin_k))
+        f.write('\n')
+        f.write("nested_loop_join_time:\t" + str(nested_loop_join_time))
+        f.write('\n')
+        f.write("construct_graph_time:\t" + str(construct_graph_time))
+        f.write('\n')
+        f.write("min_cut_time:\t\t\t" + str(min_cut_time))
         f.write('\n')
         f.write('\n')
         for r in results:
-            f.write("k = " + r[0]+"----------")
             f.write('\n')
             for val in r:
                 f.write(val)

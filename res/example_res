@@ -1,0 +1,37 @@
+tuple size:				100
+block size:				4
+k of k-min cut:			20
+nested_loop_join_time:	2.668443202972412
+construct_graph_time:	0.007652997970581055
+min_cut_time:			0.48609375953674316
+
+
+k of knn = 3----------
+r_train_acc	43.75
+r_test_acc	20.0
+s_train_acc	53.75
+s_test_acc	30.0
+
+k of knn = 5----------
+r_train_acc	36.25
+r_test_acc	30.0
+s_train_acc	46.25
+s_test_acc	30.0
+
+k of knn = 10----------
+r_train_acc	31.25
+r_test_acc	25.0
+s_train_acc	36.25
+s_test_acc	30.0
+
+k of knn = 20----------
+r_train_acc	28.75
+r_test_acc	25.0
+s_train_acc	41.25
+s_test_acc	20.0
+
+k of knn = 50----------
+r_train_acc	23.75
+r_test_acc	35.0
+s_train_acc	35.0
+s_test_acc	30.0
