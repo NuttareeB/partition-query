@@ -1,4 +1,6 @@
 from collections import defaultdict
+from knn import knn
+from svm import svc
 from preprocessing import preprocessing_releasedate
 import numpy as np
 import pandas as pd
@@ -14,7 +16,7 @@ normalized_levenshtein = NormalizedLevenshtein()
 
 # Hyper Parameters
 block_size = 4
-num_tuples = 100
+num_tuples = 1000
 
 # Filename
 R = "releasedates.csv"
@@ -84,7 +86,7 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
                     #
                     #     print(similarity_score, ": ",
                     #           datalistR[tR][left], ": ", datalistS[tS][right])
-                    if datalistR[tR][1] == 2 and get_operator(sign)(datalistR[tR][left], datalistS[tS][right]):
+                    if get_operator(sign)(datalistR[tR][left], datalistS[tS][right]):
                         tuple_r = datalistR[tR]
                         tuple_s = datalistS[tS]
 
@@ -131,7 +133,7 @@ def join(num_tuples, block_size):
 start = time.time()
 join_results, result_shape, g, no_of_vertices = join(num_tuples, block_size)
 # print(join_results, result_shape)
-k = 2
+k = 200
 # print("\n\nCut found by Karger's randomized algo is {}".format(
 #     karger_min_cut(g, k, no_of_vertices)))
 # karger_min_cut(g, k, no_of_vertices)
@@ -153,7 +155,7 @@ gout, groups = contract(graph, k)
 end = time.time()
 print("running time min cut:", end-start, "\n")
 
-preprocessing_releasedate(all_R, gout.parents, "r")
+x_train, y_train = preprocessing_releasedate(all_R, gout.parents, "r", k)
 
-
+knn(x_train, y_train)
 # preprocessing_releasedate(datalistR, gout.parents, "s")
