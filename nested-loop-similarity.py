@@ -28,8 +28,8 @@ def load_data(filename):
 
 
 def load_data_batch(filename, bRS, block_size, num_blocks):
-    #print("loading batches")
-    df = pd.read_csv(filename, skiprows=bRS, nrows=bRS+block_size)
+    # print("loading batches")
+    df = pd.read_csv(filename, header=None, skiprows=bRS, nrows=block_size)
     datalist = np.array(df)
     return datalist
 
@@ -44,24 +44,36 @@ def get_operator(comparison_operator):
     return comparison_operator_dict[comparison_operator]
 
 
-datalistR = []
-datalistS = []
+all_R = []
+all_S = []
 
 
 def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g):
-    global datalistR
-    global datalistS
+    global all_R
+    global all_S
     output = []
+    cnt = 0
     # each block
     for bR in range(0, R_num_blocks * block_size, block_size):
         # call function to get 1 block of data from R
         datalistR = load_data_batch(R, bR, block_size, R_num_blocks)
+        if isinstance(all_R, np.ndarray):
+            all_R = np.concatenate((all_R, datalistR), 0)
+        else:
+            all_R = datalistR
         for bS in range(0, S_num_blocks * block_size, block_size):
             # call function to get 1 block of data from S
             datalistS = load_data_batch(S, bS, block_size, S_num_blocks)
+            if isinstance(all_S, np.ndarray):
+                all_S = np.concatenate((all_S, datalistS), 0)
+            else:
+                all_S = datalistS
+            cnt += 1
+            if cnt == 5:
+                break
             # each tuple
-            for tR in range(bR, bR+block_size):
-                for tS in range(bS, bS+block_size):
+            for tR in range(0, block_size):
+                for tS in range(0, block_size):
                     sign = conditions[0][2]
                     left = conditions[0][0]
                     right = conditions[0][1]
@@ -112,9 +124,9 @@ def join(num_tuples, block_size):
     return join_results, join_results.shape, graph_list, no_of_vertices
 
 
-#start = time.time()
+# start = time.time()
 # used to load the whole file
-#print("running time load data", time.time()-start)
+# print("running time load data", time.time()-start)
 
 start = time.time()
 join_results, result_shape, g, no_of_vertices = join(num_tuples, block_size)
@@ -131,12 +143,17 @@ graph = Graph(g)
 end = time.time()
 print("running time construct graph", end-start)
 
+print(graph.edge_count)
+print(graph.vertex_count)
 start = time.time()
-#print(fast_min_cut(graph, k))
+# print(fast_min_cut(graph, k))
 # print(fast_min_cut(graph))
 gout, groups = contract(graph, k)
 # print(gout.parents)
 end = time.time()
 print("running time min cut:", end-start, "\n")
 
-preprocessing_releasedate(datalistR, gout.parents)
+preprocessing_releasedate(all_R, gout.parents, "r")
+
+
+# preprocessing_releasedate(datalistR, gout.parents, "s")
