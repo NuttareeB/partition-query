@@ -15,8 +15,8 @@ from os import path
 normalized_levenshtein = NormalizedLevenshtein()
 
 # Filename
-R = "releasedates.csv"
-S = "releasedates.csv"
+R = "IMDB.csv"
+S = "OMDB.csv"
 
 
 def load_data(filename):
@@ -73,29 +73,36 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
                     left = conditions[0][0]
                     right = conditions[0][1]
                     # TODO: remove hard code
-                    # similarity_score = normalized_levenshtein.distance(
-                    #     datalistR[tR][left], datalistS[tS][right])
-                    # if similarity_score < 0.60:
-                    #
-                    #     print(similarity_score, ": ",
-                    #           datalistR[tR][left], ": ", datalistS[tS][right])
-                    if get_operator(sign)(datalistR[tR][left], datalistS[tS][right]):
-                        tuple_r = datalistR[tR]
-                        tuple_s = datalistS[tS]
 
-                        # add egeds to graph
-                        src = "r" + str(tuple_r[0]) + "," + str(tuple_r[1])
-                        dest = "s" + str(tuple_s[0]) + "," + str(tuple_s[1])
-                        # edge = Edge(src, dest)
-                        # g.vertices.add(src)
-                        # g.vertices.add(dest)
-                        # g.edges.append(edge)
-                        g[src].append(dest)
-                        g[dest].append(src)
+                    if tR < len(datalistR) and tS < len(datalistS):
 
-                        # update output
-                        output.append(np.concatenate(
-                            (tuple_r, tuple_s), axis=0))
+                        similarity_score = normalized_levenshtein.distance(
+                            datalistR[tR][left], datalistS[tS][right])
+                        if similarity_score < 0.60:
+
+                            # print(similarity_score, ": ",
+                            #       datalistR[tR][left], ": ", datalistS[tS][right])
+                            # if get_operator(sign)(datalistR[tR][left], datalistS[tS][right]):
+                            tuple_r = datalistR[tR]
+                            tuple_s = datalistS[tS]
+
+                            # add egeds to graph
+                            src = "r" + str(tuple_r[0]) + "," + str(tuple_r[1])
+                            dest = "s" + \
+                                str(tuple_s[0]) + "," + str(tuple_s[1])
+                            # edge = Edge(src, dest)
+                            # g.vertices.add(src)
+                            # g.vertices.add(dest)
+                            # g.edges.append(edge)
+                            g[src].append(dest)
+                            g[dest].append(src)
+
+                            # update output
+                            output.append(np.concatenate(
+                                (tuple_r, tuple_s), axis=0))
+                    else:
+                        print("Index out of bound:", "r", tR, ",",
+                              len(datalistR), "s",  tS, ",", len(datalistS))
 
     return np.array(output), len(g)
 
@@ -106,7 +113,7 @@ def join(num_tuples, block_size):
     S_num_blocks = math.ceil(num_tuples / block_size)  # divide by ceiling
 
     # TODO: make this flexible to accept any queries
-    conditions = [[2, 2, "<"]]
+    conditions = [[1, 1, "<"]]
     join_results, no_of_vertices = nested_loop_join(
         num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g)
 
@@ -214,3 +221,31 @@ def run(num_tuples, block_size, kmin_k):
     print("R test accuracy:", str(r_test_acc), "%")
     print("S train accuracy:", str(s_train_acc), "%")
     print("S test accuracy:", str(s_test_acc), "%")
+
+
+def runbaseline(num_tuples, block_size):
+
+    sufflix = "baseline."+str(num_tuples)+'.'+str(block_size)
+    resultfilename = 'res/' + sufflix
+
+    start = time.time()
+    join_results, result_shape, g, no_of_vertices = join(
+        num_tuples, block_size)
+    # print(join_results, result_shape)
+    # print("\n\nCut found by Karger's randomized algo is {}".format(
+    #     karger_min_cut(g, k, no_of_vertices)))
+    # karger_min_cut(g, k, no_of_vertices)
+    end = time.time()
+    nested_loop_join_time = end-start
+    print("running time nested loop join", nested_loop_join_time)
+
+    with open(resultfilename, 'w') as f:
+        f.write("tuple size:\t\t\t\t" + str(num_tuples))
+        f.write('\n')
+        f.write("block size:\t\t\t\t" + str(block_size))
+        f.write('\n')
+        f.write("nested_loop_join_time:\t" + str(nested_loop_join_time))
+        f.write('\n')
+
+
+run(200, 4, 20)
