@@ -9,10 +9,12 @@ import time
 # from kmincutunionfind import karger_min_cut
 from kmincut import contract, fast_min_cut, Graph
 from strsimpy import NormalizedLevenshtein
+from strsimpy.cosine import Cosine
 import math
 from os import path
 
 normalized_levenshtein = NormalizedLevenshtein()
+cosine = Cosine(2)
 
 # Filename
 R = "IMDB.csv"
@@ -27,7 +29,7 @@ def load_data(filename):
 
 def load_data_batch(filename, bRS, block_size, num_blocks):
     # print("loading batches")
-    df = pd.read_csv(filename, header=None, skiprows=bRS, nrows=block_size)
+    df = pd.read_csv(filename, skiprows=bRS, nrows=block_size)
     datalist = np.array(df)
     return datalist
 
@@ -45,11 +47,17 @@ def get_operator(comparison_operator):
 all_R = []
 all_S = []
 
+count_res = 0
+
 
 def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g):
     global all_R
     global all_S
+    global count_res
     output = []
+    max_similarity_score = 0
+    generated_results_time = {}
+    start_time_join = time.time()
     # each block
     for bR in range(0, R_num_blocks * block_size, block_size):
         # call function to get 1 block of data from R
@@ -76,20 +84,31 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
 
                     if tR < len(datalistR) and tS < len(datalistS):
 
-                        similarity_score = normalized_levenshtein.distance(
-                            datalistR[tR][left], datalistS[tS][right])
-                        if similarity_score < 0.60:
+                        # similarity_score = normalized_levenshtein.distance(
+                        #     datalistR[tR][left], datalistS[tS][right])
+                        similarity_score = cosine.similarity_profiles(
+                            cosine.get_profile(datalistR[tR][left]), cosine.get_profile(datalistS[tS][right]))
+                        if similarity_score > 0.50:
+                            count_res += 1
+                            if count_res in [10, 30, 50, 70, 90, 100, 300, 500, 700, 900, 1000, 3000, 5000, 7000, 10000]:
+                                curr_time = time.time()
+                                generated_results_time[count_res] = curr_time - \
+                                    start_time_join
 
-                            # print(similarity_score, ": ",
-                            #       datalistR[tR][left], ": ", datalistS[tS][right])
+                            # if similarity_score > max_similarity_score:
+                            #     max_similarity_score = similarity_score
+                            #     print(similarity_score, ": ",
+                            #           datalistR[tR][left], ": ", datalistS[tS][right])
                             # if get_operator(sign)(datalistR[tR][left], datalistS[tS][right]):
                             tuple_r = datalistR[tR]
                             tuple_s = datalistS[tS]
 
                             # add egeds to graph
-                            src = "r" + str(tuple_r[0]) + "," + str(tuple_r[1])
-                            dest = "s" + \
-                                str(tuple_s[0]) + "," + str(tuple_s[1])
+                            # src = "r" + str(tuple_r[0]) + "," + str(tuple_r[1])
+                            # dest = "s" + \
+                            #     str(tuple_s[0]) + "," + str(tuple_s[1])
+                            src = "r" + str(tuple_r[0])
+                            dest = "s" + str(tuple_s[0])
                             # edge = Edge(src, dest)
                             # g.vertices.add(src)
                             # g.vertices.add(dest)
@@ -103,8 +122,8 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
                     else:
                         print("Index out of bound:", "r", tR, ",",
                               len(datalistR), "s",  tS, ",", len(datalistS))
-
-    return np.array(output), len(g)
+    print("Result count:", count_res)
+    return np.array(output), len(g), generated_results_time
 
 
 def join(num_tuples, block_size):
@@ -114,7 +133,7 @@ def join(num_tuples, block_size):
 
     # TODO: make this flexible to accept any queries
     conditions = [[1, 1, "<"]]
-    join_results, no_of_vertices = nested_loop_join(
+    join_results, no_of_vertices, generated_results_time = nested_loop_join(
         num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g)
 
     graph_list = []
@@ -123,7 +142,7 @@ def join(num_tuples, block_size):
         graph_list.append(graphs)
     # print(graph_list)
     # print("no of vertices:", no_of_vertices)
-    return join_results, join_results.shape, graph_list, no_of_vertices
+    return join_results, join_results.shape, graph_list, no_of_vertices, generated_results_time
 
 
 def run(num_tuples, block_size, kmin_k):
@@ -146,7 +165,7 @@ def run(num_tuples, block_size, kmin_k):
     # print("running time load data", time.time()-start)
 
     start = time.time()
-    join_results, result_shape, g, no_of_vertices = join(
+    join_results, result_shape, g, no_of_vertices, generated_results_time = join(
         num_tuples, block_size)
     # print(join_results, result_shape)
     # print("\n\nCut found by Karger's randomized algo is {}".format(
@@ -156,71 +175,71 @@ def run(num_tuples, block_size, kmin_k):
     nested_loop_join_time = end-start
     print("running time nested loop join", nested_loop_join_time)
 
-    start = time.time()
-    graph = Graph(g)
-    end = time.time()
+    # start = time.time()
+    # graph = Graph(g)
+    # end = time.time()
 
-    construct_graph_time = end-start
-    print("running time construct graph", construct_graph_time)
+    # construct_graph_time = end-start
+    # print("running time construct graph", construct_graph_time)
 
-    # print(graph.edge_count)
-    # print(graph.vertex_count)
-    start = time.time()
-    # print(fast_min_cut(graph, k))
-    # print(fast_min_cut(graph))
-    gout, groups = contract(graph, kmin_k)
-    # print(gout.parents)
-    end = time.time()
-    min_cut_time = end-start
-    print("running time min cut:", min_cut_time, "\n")
+    # # print(graph.edge_count)
+    # # print(graph.vertex_count)
+    # start = time.time()
+    # # print(fast_min_cut(graph, k))
+    # # print(fast_min_cut(graph))
+    # gout, groups = contract(graph, kmin_k)
+    # # print(gout.parents)
+    # end = time.time()
+    # min_cut_time = end-start
+    # print("running time min cut:", min_cut_time, "\n")
 
-    x_train_r, y_train_r = preprocessing_releasedate(
-        all_R, gout.parents, "r", kmin_k, block_size, RtrainXfilename, RtrainYfilename)
+    # x_train_r, y_train_r = preprocessing_releasedate(
+    #     all_R, gout.parents, "r", kmin_k, block_size, RtrainXfilename, RtrainYfilename)
 
-    x_train_s, y_train_s = preprocessing_releasedate(
-        all_S, gout.parents, "s", kmin_k, block_size, StrainXfilename, StrainYfilename)
+    # x_train_s, y_train_s = preprocessing_releasedate(
+    #     all_S, gout.parents, "s", kmin_k, block_size, StrainXfilename, StrainYfilename)
 
-    # else:
-    #     x_train_r = pd.read_csv(RtrainXfilename, sep=',')
-    #     y_train_r = pd.read_csv(RtrainYfilename, sep=',').values.ravel()
+    # # else:
+    # #     x_train_r = pd.read_csv(RtrainXfilename, sep=',')
+    # #     y_train_r = pd.read_csv(RtrainYfilename, sep=',').values.ravel()
 
-    #     x_train_s = pd.read_csv(StrainXfilename, sep=',')
-    #     y_train_s = pd.read_csv(StrainYfilename, sep=',').values.ravel()
+    # #     x_train_s = pd.read_csv(StrainXfilename, sep=',')
+    # #     y_train_s = pd.read_csv(StrainYfilename, sep=',').values.ravel()
 
-    knn_k_list = [3, 5, 10, 20, 50, 100, 200, 500]
-    results = []
-    for knn_k in knn_k_list:
-        if knn_k < num_tuples:
-            r_train_acc, r_test_acc = knn(x_train_r, y_train_r, knn_k)
-            s_train_acc, s_test_acc = knn(x_train_s, y_train_s, knn_k)
-            results.append(
-                ("k of knn = " + str(knn_k)+"----------", "r_train_acc\t" + str(r_train_acc), "r_test_acc\t" + str(
-                    r_test_acc), "s_train_acc\t" + str(s_train_acc), "s_test_acc\t" + str(s_test_acc)))
+    # knn_k_list = [3, 5, 10, 20, 50, 100, 200, 500]
+    # results = []
+    # for knn_k in knn_k_list:
+    #     if knn_k < num_tuples:
+    #         r_train_acc, r_test_acc = knn(x_train_r, y_train_r, knn_k)
+    #         s_train_acc, s_test_acc = knn(x_train_s, y_train_s, knn_k)
+    #         results.append(
+    #             ("k of knn = " + str(knn_k)+"----------", "r_train_acc\t" + str(r_train_acc), "r_test_acc\t" + str(
+    #                 r_test_acc), "s_train_acc\t" + str(s_train_acc), "s_test_acc\t" + str(s_test_acc)))
 
-    with open(resultfilename, 'w') as f:
-        f.write("tuple size:\t\t\t\t" + str(num_tuples))
-        f.write('\n')
-        f.write("block size:\t\t\t\t" + str(block_size))
-        f.write('\n')
-        f.write("k of k-min cut:\t\t\t" + str(kmin_k))
-        f.write('\n')
-        f.write("nested_loop_join_time:\t" + str(nested_loop_join_time))
-        f.write('\n')
-        f.write("construct_graph_time:\t" + str(construct_graph_time))
-        f.write('\n')
-        f.write("min_cut_time:\t\t\t" + str(min_cut_time))
-        f.write('\n')
-        f.write('\n')
-        for r in results:
-            f.write('\n')
-            for val in r:
-                f.write(val)
-                f.write('\n')
+    # with open(resultfilename, 'w') as f:
+    #     f.write("tuple size:\t\t\t\t" + str(num_tuples))
+    #     f.write('\n')
+    #     f.write("block size:\t\t\t\t" + str(block_size))
+    #     f.write('\n')
+    #     f.write("k of k-min cut:\t\t\t" + str(kmin_k))
+    #     f.write('\n')
+    #     f.write("nested_loop_join_time:\t" + str(nested_loop_join_time))
+    #     f.write('\n')
+    #     f.write("construct_graph_time:\t" + str(construct_graph_time))
+    #     f.write('\n')
+    #     f.write("min_cut_time:\t\t\t" + str(min_cut_time))
+    #     f.write('\n')
+    #     f.write('\n')
+    #     for r in results:
+    #         f.write('\n')
+    #         for val in r:
+    #             f.write(val)
+    #             f.write('\n')
 
-    print("R train accuracy:", str(r_train_acc), "%")
-    print("R test accuracy:", str(r_test_acc), "%")
-    print("S train accuracy:", str(s_train_acc), "%")
-    print("S test accuracy:", str(s_test_acc), "%")
+    # print("R train accuracy:", str(r_train_acc), "%")
+    # print("R test accuracy:", str(r_test_acc), "%")
+    # print("S train accuracy:", str(s_train_acc), "%")
+    # print("S test accuracy:", str(s_test_acc), "%")
 
 
 def runbaseline(num_tuples, block_size):
@@ -229,7 +248,7 @@ def runbaseline(num_tuples, block_size):
     resultfilename = 'res/' + sufflix
 
     start = time.time()
-    join_results, result_shape, g, no_of_vertices = join(
+    join_results, result_shape, g, no_of_vertices, generated_results_time = join(
         num_tuples, block_size)
     # print(join_results, result_shape)
     # print("\n\nCut found by Karger's randomized algo is {}".format(
@@ -246,6 +265,14 @@ def runbaseline(num_tuples, block_size):
         f.write('\n')
         f.write("nested_loop_join_time:\t" + str(nested_loop_join_time))
         f.write('\n')
+        f.write("number of results:\t" + str(count_res))
+        f.write('\n')
+        f.write('\n')
+        f.write('time to generate x results')
+        f.write('\n')
+        for k, v in generated_results_time.items():
+            f.write(str(k)+':\t'+str(v))
+            f.write('\n')
 
 
-run(200, 4, 20)
+runbaseline(70000, 64)

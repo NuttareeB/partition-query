@@ -31,7 +31,7 @@ class Graph(object):
         for k, v in self.verts.items():
             self.edges += ([(k, t) for t in v.keys()
                            for n in range(v[t]) if k < t])
-
+        print("Update edges edge_count:", self.edge_count)
         # print("before edge:", self.edges)
         # print()
         self.edges = list(set(self.edges))
@@ -53,9 +53,9 @@ class Graph(object):
         # print("edge_count:", self.edge_count)
         hi, ti = self.edges[edge_index]
 
-        # print()
-        # print("head:", hi)
-        # print("tail:", ti)
+        print()
+        print("head:", hi)
+        print("tail:", ti)
 
         # print()
         # print("original group vertices:\t\t\t", self.parents)
@@ -93,6 +93,8 @@ class Graph(object):
         # Merge tails
         head.update(tail)
 
+        # if len(head) == 0:
+        #     del self.verts[hi]
         # print("updated vertices after update:\t\t\t", self.verts)
         # print()
 
@@ -116,17 +118,27 @@ class Graph(object):
 def contract(graph, min_v=5):
     # min_v = 2
     g = copy.deepcopy(graph)
-    while g.vertex_count > min_v:
+    print("g.vertex_count:", g.vertex_count)
+    print("g.edge_count:", g.edge_count)
+    while g.vertex_count > min_v and g.edge_count > 0:
         # print("g:", g.verts)
         # print("g edge:", g.edges)
         r = random.randrange(0, g.edge_count)
         # print("random:", r)
         g.merge_vertices(r)
-
+        print()
+        print("g.vertex_count:", g.vertex_count)
+        # print("g.verts:", g.verts)
+        # print()
+        print("g.edge_count:", g.edge_count)
+        # print("g.edges:", g.edges)
     # parents = g.parents
     # groups = defaultdict(list)
     # for k, v in parents.items():
     #     groups[v].append(k)
+    print()
+    print(g.groups)
+    print(len(g.groups))
     return g, g.groups
 
 # Karger's Algorithm
