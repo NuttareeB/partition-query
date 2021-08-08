@@ -9,7 +9,7 @@ import time
 # from kmincutunionfind import karger_min_cut
 from kmincut import contract, fast_min_cut, Graph
 from strsimpy import NormalizedLevenshtein
-from strsimpy.cosine import Cosine
+from cosine import Cosine
 import math
 from os import path
 
@@ -86,8 +86,19 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
 
                         # similarity_score = normalized_levenshtein.distance(
                         #     datalistR[tR][left], datalistS[tS][right])
-                        similarity_score = cosine.similarity_profiles(
-                            cosine.get_profile(datalistR[tR][left]), cosine.get_profile(datalistS[tS][right]))
+                        similarity_score = 0
+                        try:
+                            similarity_score = cosine.similarity_profiles(
+                                cosine.get_profile(datalistR[tR][left]), cosine.get_profile(datalistS[tS][right]))
+                        except ZeroDivisionError as error:
+                            # Output expected ZeroDivisionErrors.
+                            print(
+                                "error occur when calculating the similarity score")
+                            print(error)
+                        except Exception as exception:
+                            # Output unexpected Exceptions.
+                            print(error)
+#                            Logging.log_exception(exception, False)
                         if similarity_score > 0.50:
                             count_res += 1
                             if count_res in [10, 30, 50, 70, 90, 100, 300, 500, 700, 900, 1000, 3000, 5000, 7000, 10000]:
