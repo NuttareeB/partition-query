@@ -1,7 +1,7 @@
 from collections import defaultdict
 from knn import knn
 from svm import svc
-from preprocessing import preprocessing_releasedate
+from preprocessing import preprocessing_OMDB, preprocessing_releasedate, preprocessing_IMDB
 import numpy as np
 import pandas as pd
 import operator
@@ -99,7 +99,7 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
                             # Output unexpected Exceptions.
                             print(error)
 #                            Logging.log_exception(exception, False)
-                        if similarity_score > 0.50:
+                        if similarity_score > 0.90:
                             count_res += 1
                             if count_res in [10, 30, 50, 70, 90, 100, 300, 500, 700, 900, 1000, 3000, 5000, 7000, 10000]:
                                 curr_time = time.time()
@@ -186,23 +186,29 @@ def run(num_tuples, block_size, kmin_k):
     nested_loop_join_time = end-start
     print("running time nested loop join", nested_loop_join_time)
 
-    # start = time.time()
-    # graph = Graph(g)
-    # end = time.time()
+    start = time.time()
+    graph = Graph(g)
+    end = time.time()
 
-    # construct_graph_time = end-start
-    # print("running time construct graph", construct_graph_time)
+    construct_graph_time = end-start
+    print("running time construct graph", construct_graph_time)
 
-    # # print(graph.edge_count)
-    # # print(graph.vertex_count)
-    # start = time.time()
-    # # print(fast_min_cut(graph, k))
-    # # print(fast_min_cut(graph))
-    # gout, groups = contract(graph, kmin_k)
-    # # print(gout.parents)
-    # end = time.time()
-    # min_cut_time = end-start
-    # print("running time min cut:", min_cut_time, "\n")
+    # print(graph.edge_count)
+    # print(graph.vertex_count)
+    start = time.time()
+    # print(fast_min_cut(graph, k))
+    # print(fast_min_cut(graph))
+    gout, groups = contract(graph, kmin_k)
+    # print(gout.parents)
+    end = time.time()
+    min_cut_time = end-start
+    print("running time min cut:", min_cut_time, "\n")
+
+    x_train_r, y_train_r = preprocessing_IMDB(
+        all_R, gout.parents, "r", RtrainXfilename, RtrainYfilename)
+
+    x_train_s, y_train_s = preprocessing_OMDB(
+        all_S, gout.parents, "s", StrainXfilename, StrainYfilename)
 
     # x_train_r, y_train_r = preprocessing_releasedate(
     #     all_R, gout.parents, "r", kmin_k, block_size, RtrainXfilename, RtrainYfilename)
@@ -217,40 +223,40 @@ def run(num_tuples, block_size, kmin_k):
     # #     x_train_s = pd.read_csv(StrainXfilename, sep=',')
     # #     y_train_s = pd.read_csv(StrainYfilename, sep=',').values.ravel()
 
-    # knn_k_list = [3, 5, 10, 20, 50, 100, 200, 500]
-    # results = []
-    # for knn_k in knn_k_list:
-    #     if knn_k < num_tuples:
-    #         r_train_acc, r_test_acc = knn(x_train_r, y_train_r, knn_k)
-    #         s_train_acc, s_test_acc = knn(x_train_s, y_train_s, knn_k)
-    #         results.append(
-    #             ("k of knn = " + str(knn_k)+"----------", "r_train_acc\t" + str(r_train_acc), "r_test_acc\t" + str(
-    #                 r_test_acc), "s_train_acc\t" + str(s_train_acc), "s_test_acc\t" + str(s_test_acc)))
+    knn_k_list = [3, 5, 10, 20, 50, 100, 200, 500]
+    results = []
+    for knn_k in knn_k_list:
+        if knn_k < num_tuples:
+            r_train_acc, r_test_acc = knn(x_train_r, y_train_r, knn_k)
+            s_train_acc, s_test_acc = knn(x_train_s, y_train_s, knn_k)
+            results.append(
+                ("k of knn = " + str(knn_k)+"----------", "r_train_acc\t" + str(r_train_acc), "r_test_acc\t" + str(
+                    r_test_acc), "s_train_acc\t" + str(s_train_acc), "s_test_acc\t" + str(s_test_acc)))
 
-    # with open(resultfilename, 'w') as f:
-    #     f.write("tuple size:\t\t\t\t" + str(num_tuples))
-    #     f.write('\n')
-    #     f.write("block size:\t\t\t\t" + str(block_size))
-    #     f.write('\n')
-    #     f.write("k of k-min cut:\t\t\t" + str(kmin_k))
-    #     f.write('\n')
-    #     f.write("nested_loop_join_time:\t" + str(nested_loop_join_time))
-    #     f.write('\n')
-    #     f.write("construct_graph_time:\t" + str(construct_graph_time))
-    #     f.write('\n')
-    #     f.write("min_cut_time:\t\t\t" + str(min_cut_time))
-    #     f.write('\n')
-    #     f.write('\n')
-    #     for r in results:
-    #         f.write('\n')
-    #         for val in r:
-    #             f.write(val)
-    #             f.write('\n')
+    with open(resultfilename, 'w') as f:
+        f.write("tuple size:\t\t\t\t" + str(num_tuples))
+        f.write('\n')
+        f.write("block size:\t\t\t\t" + str(block_size))
+        f.write('\n')
+        f.write("k of k-min cut:\t\t\t" + str(kmin_k))
+        f.write('\n')
+        f.write("nested_loop_join_time:\t" + str(nested_loop_join_time))
+        f.write('\n')
+        f.write("construct_graph_time:\t" + str(construct_graph_time))
+        f.write('\n')
+        f.write("min_cut_time:\t\t\t" + str(min_cut_time))
+        f.write('\n')
+        f.write('\n')
+        for r in results:
+            f.write('\n')
+            for val in r:
+                f.write(val)
+                f.write('\n')
 
-    # print("R train accuracy:", str(r_train_acc), "%")
-    # print("R test accuracy:", str(r_test_acc), "%")
-    # print("S train accuracy:", str(s_train_acc), "%")
-    # print("S test accuracy:", str(s_test_acc), "%")
+    print("R train accuracy:", str(r_train_acc), "%")
+    print("R test accuracy:", str(r_test_acc), "%")
+    print("S train accuracy:", str(s_train_acc), "%")
+    print("S test accuracy:", str(s_test_acc), "%")
 
 
 def runbaseline(num_tuples, block_size):
@@ -286,4 +292,5 @@ def runbaseline(num_tuples, block_size):
             f.write('\n')
 
 
-runbaseline(70000, 64)
+# runbaseline(70000, 64)
+#run(1000, 64, 20)
