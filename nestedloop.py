@@ -50,14 +50,14 @@ all_S = []
 count_res = 0
 
 
-def nested_loop_join_group(datalistR, datalistS, conditions):
+def nested_loop_join_group(datalistR, datalistS, conditions, expected_no_of_results):
     datalistR = np.array(datalistR)
     datalistS = np.array(datalistS)
     print("nested_loop_join_group len datalistR:", len(datalistR))
     print("nested_loop_join_group len datalistS:", len(datalistS))
     output = []
     generated_results_time = {}
-    count_res = 0
+    res_count = 0
     start_time_join = time.time()
     for tR in range(len(datalistR)):
         for tS in range(len(datalistS)):
@@ -74,14 +74,15 @@ def nested_loop_join_group(datalistR, datalistS, conditions):
                         "error occur when calculating the similarity score")
                     print(error)
                 except Exception as exception:
-                    print(error)
+                    print(exception)
+
                 if similarity_score > 0.4:
                     # print(datalistR[tR][left], "----",
                     #       datalistS[tS][right])
-                    count_res += 1
-                    if count_res in [10, 30, 50, 70, 90, 100, 300, 500, 700, 900, 1000, 2000, 3000, 5000, 7000, 10000]:
+                    res_count += 1
+                    if res_count in [10, 30, 50, 70, 90, 100, 300, 500, 700, 900, 1000, 2000, 3000, 5000, 7000, 10000]:
                         curr_time = time.time()
-                        generated_results_time[count_res] = curr_time - \
+                        generated_results_time[res_count] = curr_time - \
                             start_time_join
 
                     tuple_r = datalistR[tR]
@@ -90,6 +91,9 @@ def nested_loop_join_group(datalistR, datalistS, conditions):
                     # update output
                     output.append(np.concatenate(
                         (tuple_r, tuple_s), axis=0))
+
+                    if expected_no_of_results != 0 and res_count >= expected_no_of_results:
+                        return np.array(output), generated_results_time
             else:
                 print("Index out of bound:", "r", tR, ",",
                       len(datalistR), "s",  tS, ",", len(datalistS))
@@ -97,7 +101,7 @@ def nested_loop_join_group(datalistR, datalistS, conditions):
     return np.array(output), generated_results_time
 
 
-def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g):
+def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g, no_of_results, is_baseline):
     global all_R
     global all_S
     global count_res
@@ -150,7 +154,7 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
                             # print(datalistR[tR][left], "----",
                             #       datalistS[tS][right])
                             count_res += 1
-                            if count_res in [10, 30, 50, 70, 90, 100, 300, 500, 700, 900, 1000, 3000, 5000, 7000, 10000]:
+                            if count_res in [10, 30, 50, 70, 90, 100, 300, 500, 700, 900, 1000, 3000, 5000, 7000, 10000, 15000, 20000, 25000, 30000]:
                                 curr_time = time.time()
                                 generated_results_time[count_res] = curr_time - \
                                     start_time_join
@@ -179,7 +183,7 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
                             # update output
                             output.append(np.concatenate(
                                 (tuple_r, tuple_s), axis=0))
-                            if count_res >= 29442:
+                            if is_baseline and no_of_results != 0 and count_res >= no_of_results:
                                 return np.array(output), len(g), generated_results_time
                     else:
                         print("Index out of bound:", "r", tR, ",",
@@ -188,7 +192,7 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
     return np.array(output), len(g), generated_results_time
 
 
-def join(num_tuples, block_size):
+def join(num_tuples, block_size, no_of_results, is_baseline):
     g = defaultdict(list)
     R_num_blocks = math.ceil(num_tuples / block_size)  # divide by ceiling
     S_num_blocks = math.ceil(num_tuples / block_size)  # divide by ceiling
@@ -196,7 +200,7 @@ def join(num_tuples, block_size):
     # TODO: make this flexible to accept any queries
     conditions = [[1, 1, "<"]]
     join_results, no_of_vertices, generated_results_time = nested_loop_join(
-        num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g)
+        num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g, no_of_results, is_baseline)
 
     graph_list = []
     for item in g.items():
@@ -207,7 +211,7 @@ def join(num_tuples, block_size):
     return join_results, join_results.shape, graph_list, no_of_vertices, generated_results_time
 
 
-def run(train_size, block_size, kmin_k):
+def run(train_size, block_size, kmin_k, no_of_results=0):
     sufflix = str(train_size)+'.'+str(block_size)+'.'+str(kmin_k)
     RtrainXfilename = 'data/r-trainX.' + sufflix
     RtrainYfilename = 'data/r-trainY.' + sufflix
@@ -221,15 +225,16 @@ def run(train_size, block_size, kmin_k):
     x_train_s = None
     y_train_s = None
     start_run = time.time()
+
     # if not path.exists(RtrainXfilename) or not path.exists(RtrainYfilename):
 
     # start = time.time()
     # used to load the whole file
     # print("running time load data", time.time()-start)
-
+    is_baseline = False
     start = time.time()
     join_results, result_shape, g, no_of_vertices, generated_results_time = join(
-        train_size, block_size)
+        train_size, block_size, no_of_results, is_baseline)
     # print(join_results, result_shape)
     # print("\n\nCut found by Karger's randomized algo is {}".format(
     #     karger_min_cut(g, k, no_of_vertices)))
@@ -257,7 +262,7 @@ def run(train_size, block_size, kmin_k):
     min_cut_time = end-start
     print("running time min cut:", min_cut_time, "\n")
 
-    total_tuples = 20000
+    total_tuples = 10000
     r_data = load_data_batch(R, 0, total_tuples)
     s_data = load_data_batch(S, 0, total_tuples)
 
@@ -273,7 +278,7 @@ def run(train_size, block_size, kmin_k):
     print(len(x_train_r))
     print(len(y_train_r))
 
-    knn_k_list = [3, 5]
+    knn_k_list = [3]
     results = []
     r_nn = None
     s_nn = None
@@ -335,8 +340,11 @@ def run(train_size, block_size, kmin_k):
         while len(r_pred_group) > 0 and len(s_pred_group) > 0:
             key = list(r_pred_group.keys())[0]
             if key in s_pred_group.keys():
+                current_output_size = len(join_results)
+                expected_no_of_results = no_of_results - \
+                    current_output_size if no_of_results > 0 and no_of_results > current_output_size else 0
                 output, gen_results_time = nested_loop_join_group(
-                    r_pred_group[key], s_pred_group[key], conditions)
+                    r_pred_group[key], s_pred_group[key], conditions, expected_no_of_results)
                 if len(output) > 0:
                     join_results = np.concatenate((join_results, output))
                 x_no_results_time.append(gen_results_time)
@@ -344,9 +352,6 @@ def run(train_size, block_size, kmin_k):
             del r_pred_group[key]
 
         curr_start_idx = curr_end_idx
-
-    print("size of output:", len(join_results))
-    print("whole time:", time.time()-start_run)
 
     print("generated_results_time:")
     print(generated_results_time)
@@ -382,25 +387,29 @@ def run(train_size, block_size, kmin_k):
             for val in r:
                 f.write(val)
                 f.write('\n')
+        f.write('\n')
+        f.write('\n')
+        f.write("size of output:" + str(len(join_results)))
+        f.write('\n')
+        f.write("whole time:" + str(time.time()-start_run))
 
-    print("R train accuracy:", str(r_train_acc), "%")
-    print("R test accuracy:", str(r_test_acc), "%")
-    print("S train accuracy:", str(s_train_acc), "%")
-    print("S test accuracy:", str(s_test_acc), "%")
+    # print("R train accuracy:", str(r_train_acc), "%")
+    # print("R test accuracy:", str(r_test_acc), "%")
+    # print("S train accuracy:", str(s_train_acc), "%")
+    # print("S test accuracy:", str(s_test_acc), "%")
 
 
-def runbaseline(num_tuples, block_size):
+def runbaseline(num_tuples, block_size, no_of_results):
 
     sufflix = "baseline."+str(num_tuples)+'.'+str(block_size)
     resultfilename = 'res/' + sufflix
 
+    is_baseline = True
+
     start = time.time()
     join_results, result_shape, g, no_of_vertices, generated_results_time = join(
-        num_tuples, block_size)
-    # print(join_results, result_shape)
-    # print("\n\nCut found by Karger's randomized algo is {}".format(
-    #     karger_min_cut(g, k, no_of_vertices)))
-    # karger_min_cut(g, k, no_of_vertices)
+        num_tuples, block_size, no_of_results, is_baseline)
+
     end = time.time()
     nested_loop_join_time = end-start
     print("running time nested loop join", nested_loop_join_time)
@@ -423,4 +432,4 @@ def runbaseline(num_tuples, block_size):
 
 
 # runbaseline(20000, 512)
-run(3000, 512, 100)
+run(2000, 512, 100)
