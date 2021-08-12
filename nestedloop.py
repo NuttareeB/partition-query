@@ -1,7 +1,7 @@
 from collections import defaultdict
-from knn import knn
+from knn import knn, predict
 from svm import svc
-from preprocessing import preprocessing_OMDB, preprocessing_releasedate, preprocessing_IMDB
+from preprocessing import preprocessing_IMDB_test, preprocessing_OMDB, preprocessing_OMDB_test, preprocessing_releasedate, preprocessing_IMDB
 import numpy as np
 import pandas as pd
 import operator
@@ -9,7 +9,7 @@ import time
 # from kmincutunionfind import karger_min_cut
 from kmincut import contract, fast_min_cut, Graph
 from strsimpy import NormalizedLevenshtein
-from cosine import Cosine
+from strsimpy.cosine import Cosine
 import math
 from os import path
 
@@ -27,7 +27,7 @@ def load_data(filename):
     return datalist
 
 
-def load_data_batch(filename, bRS, block_size, num_blocks):
+def load_data_batch(filename, bRS, block_size, num_blocks=4):
     # print("loading batches")
     df = pd.read_csv(filename, skiprows=bRS, nrows=block_size)
     datalist = np.array(df)
@@ -48,6 +48,53 @@ all_R = []
 all_S = []
 
 count_res = 0
+
+
+def nested_loop_join_group(datalistR, datalistS, conditions):
+    datalistR = np.array(datalistR)
+    datalistS = np.array(datalistS)
+    print("nested_loop_join_group len datalistR:", len(datalistR))
+    print("nested_loop_join_group len datalistS:", len(datalistS))
+    output = []
+    generated_results_time = {}
+    count_res = 0
+    start_time_join = time.time()
+    for tR in range(len(datalistR)):
+        for tS in range(len(datalistS)):
+            sign = conditions[0][2]
+            left = conditions[0][0]
+            right = conditions[0][1]
+            if tR < len(datalistR) and tS < len(datalistS):
+                similarity_score = 0
+                try:
+                    similarity_score = cosine.similarity_profiles(
+                        cosine.get_profile(datalistR[tR][left]), cosine.get_profile(datalistS[tS][right]))
+                except ZeroDivisionError as error:
+                    print(
+                        "error occur when calculating the similarity score")
+                    print(error)
+                except Exception as exception:
+                    print(error)
+                if similarity_score > 0.4:
+                    # print(datalistR[tR][left], "----",
+                    #       datalistS[tS][right])
+                    count_res += 1
+                    if count_res in [10, 30, 50, 70, 90, 100, 300, 500, 700, 900, 1000, 2000, 3000, 5000, 7000, 10000]:
+                        curr_time = time.time()
+                        generated_results_time[count_res] = curr_time - \
+                            start_time_join
+
+                    tuple_r = datalistR[tR]
+                    tuple_s = datalistS[tS]
+
+                    # update output
+                    output.append(np.concatenate(
+                        (tuple_r, tuple_s), axis=0))
+            else:
+                print("Index out of bound:", "r", tR, ",",
+                      len(datalistR), "s",  tS, ",", len(datalistS))
+
+    return np.array(output), generated_results_time
 
 
 def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g):
@@ -99,7 +146,9 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
                             # Output unexpected Exceptions.
                             print(error)
 #                            Logging.log_exception(exception, False)
-                        if similarity_score > 0.90:
+                        if similarity_score > 0.4:
+                            # print(datalistR[tR][left], "----",
+                            #       datalistS[tS][right])
                             count_res += 1
                             if count_res in [10, 30, 50, 70, 90, 100, 300, 500, 700, 900, 1000, 3000, 5000, 7000, 10000]:
                                 curr_time = time.time()
@@ -130,6 +179,8 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
                             # update output
                             output.append(np.concatenate(
                                 (tuple_r, tuple_s), axis=0))
+                            if count_res >= 29442:
+                                return np.array(output), len(g), generated_results_time
                     else:
                         print("Index out of bound:", "r", tR, ",",
                               len(datalistR), "s",  tS, ",", len(datalistS))
@@ -156,8 +207,8 @@ def join(num_tuples, block_size):
     return join_results, join_results.shape, graph_list, no_of_vertices, generated_results_time
 
 
-def run(num_tuples, block_size, kmin_k):
-    sufflix = str(num_tuples)+'.'+str(block_size)+'.'+str(kmin_k)
+def run(train_size, block_size, kmin_k):
+    sufflix = str(train_size)+'.'+str(block_size)+'.'+str(kmin_k)
     RtrainXfilename = 'data/r-trainX.' + sufflix
     RtrainYfilename = 'data/r-trainY.' + sufflix
     StrainXfilename = 'data/s-trainX.' + sufflix
@@ -169,6 +220,7 @@ def run(num_tuples, block_size, kmin_k):
     y_train_r = None
     x_train_s = None
     y_train_s = None
+    start_run = time.time()
     # if not path.exists(RtrainXfilename) or not path.exists(RtrainYfilename):
 
     # start = time.time()
@@ -177,7 +229,7 @@ def run(num_tuples, block_size, kmin_k):
 
     start = time.time()
     join_results, result_shape, g, no_of_vertices, generated_results_time = join(
-        num_tuples, block_size)
+        train_size, block_size)
     # print(join_results, result_shape)
     # print("\n\nCut found by Karger's randomized algo is {}".format(
     #     karger_min_cut(g, k, no_of_vertices)))
@@ -193,54 +245,132 @@ def run(num_tuples, block_size, kmin_k):
     construct_graph_time = end-start
     print("running time construct graph", construct_graph_time)
 
-    # print(graph.edge_count)
-    # print(graph.vertex_count)
+    print(graph.edge_count)
+    print(graph.vertex_count)
     start = time.time()
     # print(fast_min_cut(graph, k))
     # print(fast_min_cut(graph))
     gout, groups = contract(graph, kmin_k)
     # print(gout.parents)
+    # print(gout.groups)
     end = time.time()
     min_cut_time = end-start
     print("running time min cut:", min_cut_time, "\n")
 
-    x_train_r, y_train_r = preprocessing_IMDB(
-        all_R, gout.parents, "r", RtrainXfilename, RtrainYfilename)
+    total_tuples = 20000
+    r_data = load_data_batch(R, 0, total_tuples)
+    s_data = load_data_batch(S, 0, total_tuples)
 
-    x_train_s, y_train_s = preprocessing_OMDB(
-        all_S, gout.parents, "s", StrainXfilename, StrainYfilename)
+    x_r, y_train_r, rtrain_max_rate, rtrain_min_rate = preprocessing_IMDB(
+        r_data, train_size, gout.parents, "r", RtrainXfilename, RtrainYfilename)
 
-    # x_train_r, y_train_r = preprocessing_releasedate(
-    #     all_R, gout.parents, "r", kmin_k, block_size, RtrainXfilename, RtrainYfilename)
+    x_s, y_train_s, strain_max_rate, strain_min_rate = preprocessing_OMDB(
+        s_data, train_size, gout.parents, "s", StrainXfilename, StrainYfilename)
 
-    # x_train_s, y_train_s = preprocessing_releasedate(
-    #     all_S, gout.parents, "s", kmin_k, block_size, StrainXfilename, StrainYfilename)
+    x_train_r = x_r[:train_size]
+    x_train_s = x_s[:train_size]
 
-    # # else:
-    # #     x_train_r = pd.read_csv(RtrainXfilename, sep=',')
-    # #     y_train_r = pd.read_csv(RtrainYfilename, sep=',').values.ravel()
+    print(len(x_train_r))
+    print(len(y_train_r))
 
-    # #     x_train_s = pd.read_csv(StrainXfilename, sep=',')
-    # #     y_train_s = pd.read_csv(StrainYfilename, sep=',').values.ravel()
-
-    knn_k_list = [3, 5, 10, 20, 50, 100, 200, 500]
+    knn_k_list = [3, 5]
     results = []
+    r_nn = None
+    s_nn = None
     for knn_k in knn_k_list:
-        if knn_k < num_tuples:
-            r_train_acc, r_test_acc = knn(x_train_r, y_train_r, knn_k)
-            s_train_acc, s_test_acc = knn(x_train_s, y_train_s, knn_k)
+        if knn_k < train_size:
+            r_train_acc, r_test_acc, r_nn = knn(
+                x_train_r, y_train_r, knn_k)
+            s_train_acc, s_test_acc, s_nn = knn(x_train_s, y_train_s, knn_k)
             results.append(
                 ("k of knn = " + str(knn_k)+"----------", "r_train_acc\t" + str(r_train_acc), "r_test_acc\t" + str(
                     r_test_acc), "s_train_acc\t" + str(s_train_acc), "s_test_acc\t" + str(s_test_acc)))
 
+    # # SVM
+    # r_train_acc, r_test_acc, r_nn = svc(x_train_r, y_train_r)
+    # s_train_acc, s_test_acc, s_nn = svc(x_train_s, y_train_s)
+    # results.append(
+    #     ("r_train_acc\t" + str(r_train_acc), "r_test_acc\t" + str(
+    #         r_test_acc), "s_train_acc\t" + str(s_train_acc), "s_test_acc\t" + str(s_test_acc)))
+
+    # predict and join
+    curr_start_idx = train_size
+
+    x_no_results_time = []
+    # TODO: make this flexible to accept any queries
+    conditions = [[1, 1, "<"]]
+    while curr_start_idx < total_tuples-1:
+        curr_end_idx = curr_start_idx+train_size
+
+        r_test_data = r_data[curr_start_idx:curr_end_idx]
+        s_test_data = s_data[curr_start_idx:curr_end_idx]
+        r_bin_test_data = x_r[curr_start_idx:curr_end_idx]
+        s_bin_test_data = x_s[curr_start_idx:curr_end_idx]
+        # print(r_test_data)
+
+        # predict new data
+        r_y_pred = predict(r_nn, r_bin_test_data)
+        s_y_pred = predict(s_nn, s_bin_test_data)
+
+        # print("r predict")
+        # print(r_y_pred)
+
+        r_pred_group = defaultdict(list)
+        s_pred_group = defaultdict(list)
+
+        for i in range(len(r_y_pred)):
+            r_label = r_y_pred[i]
+            if r_label != "unjoinable":
+                r_pred_group[r_label].append(r_test_data[i])
+
+            s_label = s_y_pred[i]
+            if s_label != "unjoinable":
+                s_pred_group[s_label].append(s_test_data[i])
+
+        print("r pred_group")
+        print(len(r_pred_group), r_pred_group.keys())
+        print("s pred_group")
+        print(len(s_pred_group), s_pred_group.keys())
+
+        while len(r_pred_group) > 0 and len(s_pred_group) > 0:
+            key = list(r_pred_group.keys())[0]
+            if key in s_pred_group.keys():
+                output, gen_results_time = nested_loop_join_group(
+                    r_pred_group[key], s_pred_group[key], conditions)
+                if len(output) > 0:
+                    join_results = np.concatenate((join_results, output))
+                x_no_results_time.append(gen_results_time)
+                del s_pred_group[key]
+            del r_pred_group[key]
+
+        curr_start_idx = curr_end_idx
+
+    print("size of output:", len(join_results))
+    print("whole time:", time.time()-start_run)
+
+    print("generated_results_time:")
+    print(generated_results_time)
+
+    print("x_no_results_time:")
+    print(x_no_results_time)
+
     with open(resultfilename, 'w') as f:
-        f.write("tuple size:\t\t\t\t" + str(num_tuples))
+        f.write("tuple size:\t\t\t\t" + str(train_size))
         f.write('\n')
         f.write("block size:\t\t\t\t" + str(block_size))
         f.write('\n')
         f.write("k of k-min cut:\t\t\t" + str(kmin_k))
         f.write('\n')
         f.write("nested_loop_join_time:\t" + str(nested_loop_join_time))
+        f.write('\n')
+        f.write("number of results:\t" + str(count_res))
+        f.write('\n')
+        f.write('\n')
+        f.write('time to generate x results')
+        f.write('\n')
+        for k, v in generated_results_time.items():
+            f.write(str(k)+':\t'+str(v))
+            f.write('\n')
         f.write('\n')
         f.write("construct_graph_time:\t" + str(construct_graph_time))
         f.write('\n')
@@ -292,5 +422,5 @@ def runbaseline(num_tuples, block_size):
             f.write('\n')
 
 
-# runbaseline(70000, 64)
-#run(1000, 64, 20)
+# runbaseline(20000, 512)
+run(3000, 512, 100)

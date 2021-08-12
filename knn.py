@@ -10,7 +10,7 @@ def knn(x_train, y_train, knn_k):
     nn.fit(x_train[:train_size], y_train[:train_size])
     y_pred_train = nn.predict(x_train[:train_size])
     y_pred = nn.predict(x_train[train_size:])
-
+    # print("------k =", knn_k)
     # print("y_pred:", y_pred)
 
     ground_truth = y_train[train_size:]
@@ -29,4 +29,8 @@ def knn(x_train, y_train, knn_k):
 
     train_acc = traincorrect * 100/len(y_train[:train_size])
 
-    return train_acc, test_acc
+    return train_acc, test_acc, nn
+
+
+def predict(nn, x_test):
+    return nn.predict(x_test)

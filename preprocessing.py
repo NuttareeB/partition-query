@@ -92,7 +92,7 @@ def convert_listcol_to_dummies(data):
     return bin_data
 
 
-def preprocessing_IMDB(datalist, parents, relation_type, trainXfilename, trainYfilename):
+def preprocessing_IMDB(datalist, train_size, parents, relation_type, trainXfilename, trainYfilename):
     labels = []
     joinable_count = 0
     datalist = np.array(datalist)
@@ -118,7 +118,7 @@ def preprocessing_IMDB(datalist, parents, relation_type, trainXfilename, trainYf
     bin_data = pd.concat([bin_year, bin_genre, bin_countries,
                           bin_language, normalized_rating], axis=1)
 
-    for row in datalist:
+    for row in datalist[:train_size]:
         # generate labels
         key = relation_type + str(row[0])
         if key not in parents:
@@ -131,10 +131,35 @@ def preprocessing_IMDB(datalist, parents, relation_type, trainXfilename, trainYf
     pd.DataFrame(labels, columns=["label"]).to_csv(
         trainYfilename, sep=",", index=False)
 
-    return bin_data, labels
+    return bin_data, labels, max_rate, min_rate
 
 
-def preprocessing_OMDB(datalist, parents, relation_type, trainXfilename, trainYfilename):
+def preprocessing_IMDB_test(datalist, max_rate, min_rate, train_bin_data):
+    datalist = np.array(datalist)
+    year = datalist[:, 2]
+
+    df_year = pd.DataFrame(year, columns=["year"])
+    bin_year = pd.get_dummies(df_year)
+
+    bin_genre = convert_listcol_to_dummies(datalist[:, 3])
+    bin_countries = convert_listcol_to_dummies(datalist[:, 8])
+    bin_language = convert_listcol_to_dummies(datalist[:, 9])
+
+    rating = datalist[:, 10]
+    df_rating = pd.DataFrame(rating, columns=['rating'])
+    df_rating = df_rating.rating.apply(
+        lambda x: float(x.split('(')[0]) if isinstance(x, str) else 0)
+
+    normalized_rating = (df_rating-min_rate)/(max_rate - min_rate)
+
+    bin_data = pd.concat([bin_year, bin_genre, bin_countries,
+                          bin_language, normalized_rating], axis=1)
+    bin_data = bin_data.reindex(columns=train_bin_data.columns, fill_value=0)
+
+    return bin_data
+
+
+def preprocessing_OMDB(datalist, train_size, parents, relation_type, trainXfilename, trainYfilename):
     labels = []
     joinable_count = 0
     datalist = np.array(datalist)
@@ -161,7 +186,7 @@ def preprocessing_OMDB(datalist, parents, relation_type, trainXfilename, trainYf
     bin_data = pd.concat([bin_year, bin_genre, bin_countries,
                           bin_language, normalized_rating], axis=1)
 
-    for row in datalist:
+    for row in datalist[:train_size]:
         # generate labels
         key = relation_type + str(row[0])
         if key not in parents:
@@ -174,4 +199,29 @@ def preprocessing_OMDB(datalist, parents, relation_type, trainXfilename, trainYf
     pd.DataFrame(labels, columns=["label"]).to_csv(
         trainYfilename, sep=",", index=False)
 
-    return bin_data, labels
+    return bin_data, labels, max_rate, min_rate
+
+
+def preprocessing_OMDB_test(datalist, max_rate, min_rate):
+    datalist = np.array(datalist)
+
+    year = datalist[:, 2]
+
+    df_year = pd.DataFrame(year, columns=["year"])
+    bin_year = pd.get_dummies(df_year)
+
+    bin_genre = convert_listcol_to_dummies(datalist[:, 5])
+    bin_countries = convert_listcol_to_dummies(datalist[:, 16])
+    bin_language = convert_listcol_to_dummies(datalist[:, 15])
+
+    rating = datalist[:, 11]
+    df_rating = pd.DataFrame(rating, columns=['rating'])
+    df_rating = df_rating.rating.apply(
+        lambda x: 0 if math.isnan(x) else x)
+
+    normalized_rating = (df_rating-min_rate)/(max_rate - min_rate)
+
+    bin_data = pd.concat([bin_year, bin_genre, bin_countries,
+                          bin_language, normalized_rating], axis=1)
+
+    return bin_data
