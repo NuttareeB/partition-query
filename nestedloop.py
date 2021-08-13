@@ -336,13 +336,15 @@ def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_re
         print(len(r_pred_group), r_pred_group.keys())
         print("s pred_group")
         print(len(s_pred_group), s_pred_group.keys())
+        expected_no_of_results = no_of_results - \
+            current_output_size if no_of_results > 0 and no_of_results > current_output_size else 0
+        if expected_no_of_results == 0:
+            break
 
         while len(r_pred_group) > 0 and len(s_pred_group) > 0:
             key = list(r_pred_group.keys())[0]
             if key in s_pred_group.keys():
                 current_output_size = len(join_results)
-                expected_no_of_results = no_of_results - \
-                    current_output_size if no_of_results > 0 and no_of_results > current_output_size else 0
                 output, gen_results_time = nested_loop_join_group(
                     r_pred_group[key], s_pred_group[key], conditions, similarity_score, expected_no_of_results)
                 if len(output) > 0:
