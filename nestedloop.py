@@ -211,8 +211,9 @@ def join(num_tuples, block_size, no_of_results, is_baseline):
     return join_results, join_results.shape, graph_list, no_of_vertices, generated_results_time
 
 
-def run(train_size, block_size, kmin_k, no_of_results=0):
-    sufflix = str(train_size)+'.'+str(block_size)+'.'+str(kmin_k)
+def run(total_tuples, train_size, block_size, kmin_k, no_of_results=0):
+    sufflix = str(train_size)+'.'+str(block_size) + \
+        '.'+str(kmin_k)+'.'+str(no_of_results)
     RtrainXfilename = 'data/r-trainX.' + sufflix
     RtrainYfilename = 'data/r-trainY.' + sufflix
     StrainXfilename = 'data/s-trainX.' + sufflix
@@ -262,7 +263,6 @@ def run(train_size, block_size, kmin_k, no_of_results=0):
     min_cut_time = end-start
     print("running time min cut:", min_cut_time, "\n")
 
-    total_tuples = 10000
     r_data = load_data_batch(R, 0, total_tuples)
     s_data = load_data_batch(S, 0, total_tuples)
 
@@ -401,7 +401,8 @@ def run(train_size, block_size, kmin_k, no_of_results=0):
 
 def runbaseline(num_tuples, block_size, no_of_results):
 
-    sufflix = "baseline."+str(num_tuples)+'.'+str(block_size)
+    sufflix = "baseline."+str(num_tuples)+'.' + \
+        str(block_size)+'.'+str(no_of_results)
     resultfilename = 'res/' + sufflix
 
     is_baseline = True
@@ -431,5 +432,5 @@ def runbaseline(num_tuples, block_size, no_of_results):
             f.write('\n')
 
 
-# runbaseline(20000, 512)
-run(2000, 512, 100)
+# runbaseline(20000, 512, 1000)
+# run(20000, 2000, 512, 100, 1000)
