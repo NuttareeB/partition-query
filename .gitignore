@@ -127,3 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#mac file
+.DS_Store
+
+#Dataset
+OMDB.csv
+IMDB.csv
+
+#input
+/input

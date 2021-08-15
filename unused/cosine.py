@@ -26,10 +26,13 @@ class Cosine(ShingleBased):
     def similarity_profiles(self, profile0, profile1):
         norm_profile0 = self._norm(profile0)
         norm_profile1 = self._norm(profile1)
+
         if norm_profile0 == 0:
-            norm_profile0 = 0.00001
+            print(norm_profile0, "", norm_profile1)
+            norm_profile0 = 100
         if norm_profile1 == 0:
-            norm_profile1 = 0.00001
+            print(norm_profile0, "", norm_profile1)
+            norm_profile1 = 100
         return self._dot_product(profile0, profile1) / norm_profile0 * norm_profile1
 
     @ staticmethod

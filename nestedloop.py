@@ -1,6 +1,5 @@
 from collections import defaultdict
 from knn import knn, predict
-from svm import svc
 from preprocessing import preprocessing_IMDB_test, preprocessing_OMDB, preprocessing_OMDB_test, preprocessing_releasedate, preprocessing_IMDB
 import numpy as np
 import pandas as pd
@@ -212,7 +211,7 @@ def join(num_tuples, block_size, no_of_results, is_baseline, expected_similarity
 
 
 def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_results=0):
-    sufflix = str(train_size)+'.'+str(block_size) + \
+    sufflix = str(total_tuples)+'.'+str(train_size)+'.'+str(block_size) + \
         '.'+str(kmin_k)+'.'+str(no_of_results)+'.'+str(similarity_score)
     RtrainXfilename = 'data/r-trainX.' + sufflix
     RtrainYfilename = 'data/r-trainY.' + sufflix
@@ -340,7 +339,7 @@ def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_re
         current_output_size = len(join_results)
         expected_no_of_results = no_of_results - \
             current_output_size if no_of_results > 0 and no_of_results > current_output_size else 0
-        if expected_no_of_results == 0:
+        if expected_no_of_results == 0 and no_of_results != 0:
             break
 
         while len(r_pred_group) > 0 and len(s_pred_group) > 0:
@@ -371,11 +370,18 @@ def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_re
         f.write('\n')
         f.write("nested_loop_join_time:\t" + str(nested_loop_join_time))
         f.write('\n')
-        f.write("number of results:\t" + str(count_res))
+        f.write("number of results:\t\t" + str(count_res))
+        f.write('\n')
+
+        f.write("edge count: \t\t\t" + str(graph.edge_count))
+        f.write('\n')
+        f.write("vertex count: \t\t\t" + str(graph.vertex_count))
         f.write('\n')
         f.write('\n')
+
         f.write('time to generate x results')
         f.write('\n')
+
         for k, v in generated_results_time.items():
             f.write(str(k)+':\t'+str(v))
             f.write('\n')
@@ -402,7 +408,7 @@ def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_re
     # print("S test accuracy:", str(s_test_acc), "%")
 
 
-def runbaseline(num_tuples, block_size, no_of_results):
+def runbaseline(num_tuples, block_size, expected_similarity_score, no_of_results=0):
 
     sufflix = "baseline."+str(num_tuples)+'.' + \
         str(block_size)+'.'+str(no_of_results)
@@ -412,7 +418,7 @@ def runbaseline(num_tuples, block_size, no_of_results):
 
     start = time.time()
     join_results, result_shape, g, no_of_vertices, generated_results_time = join(
-        num_tuples, block_size, no_of_results, is_baseline)
+        num_tuples, block_size, no_of_results, is_baseline, expected_similarity_score)
 
     end = time.time()
     nested_loop_join_time = end-start
@@ -430,10 +436,11 @@ def runbaseline(num_tuples, block_size, no_of_results):
         f.write('\n')
         f.write('time to generate x results')
         f.write('\n')
+        f.write('\n')
         for k, v in generated_results_time.items():
             f.write(str(k)+':\t'+str(v))
             f.write('\n')
 
 
-# runbaseline(20000, 512, 8000)
-run(20000, 2000, 512, 100, 0.4, 8000)
+# runbaseline(1000, 1000, 0.4, 100)
+run(20000, 512, 512, 100, 0.4)
