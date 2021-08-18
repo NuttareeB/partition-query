@@ -49,15 +49,14 @@ all_S = []
 count_res = 0
 
 
-def nested_loop_join_group(datalistR, datalistS, conditions, expected_similarity_score, expected_no_of_results):
+def nested_loop_join_group(datalistR, datalistS, conditions, expected_similarity_score, expected_no_of_results, current_output_size, generated_results_time, start_run_time):
     datalistR = np.array(datalistR)
     datalistS = np.array(datalistS)
     print("nested_loop_join_group len datalistR:", len(datalistR))
     print("nested_loop_join_group len datalistS:", len(datalistS))
     output = []
-    generated_results_time = {}
+    # generated_results_time = {}
     res_count = 0
-    start_time_join = time.time()
     for tR in range(len(datalistR)):
         for tS in range(len(datalistS)):
             sign = conditions[0][2]
@@ -79,10 +78,11 @@ def nested_loop_join_group(datalistR, datalistS, conditions, expected_similarity
                     # print(datalistR[tR][left], "----",
                     #       datalistS[tS][right])
                     res_count += 1
-                    if res_count in [10, 30, 50, 70, 90, 100, 300, 500, 700, 900, 1000, 2000, 3000, 5000, 7000, 10000]:
+                    total_res_count = current_output_size + res_count
+                    if total_res_count in [100, 300, 500, 700, 900, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 20000, 25000, 30000]:
                         curr_time = time.time()
-                        generated_results_time[res_count] = curr_time - \
-                            start_time_join
+                        generated_results_time[total_res_count] = curr_time - \
+                            start_run_time
 
                     tuple_r = datalistR[tR]
                     tuple_s = datalistS[tS]
@@ -100,14 +100,14 @@ def nested_loop_join_group(datalistR, datalistS, conditions, expected_similarity
     return np.array(output), generated_results_time
 
 
-def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g, no_of_results, is_baseline, expected_similarity_score):
+def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g, no_of_results, is_baseline, expected_similarity_score, start_run_time):
     global all_R
     global all_S
     global count_res
     output = []
     max_similarity_score = 0
     generated_results_time = {}
-    start_time_join = time.time()
+    start_time_join = start_run_time
     # each block
     for bR in range(0, R_num_blocks * block_size, block_size):
         # call function to get 1 block of data from R
@@ -153,7 +153,7 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
                             # print(datalistR[tR][left], "----",
                             #       datalistS[tS][right])
                             count_res += 1
-                            if count_res in [10, 30, 50, 70, 90, 100, 300, 500, 700, 900, 1000, 3000, 5000, 7000, 10000, 15000, 20000, 25000, 30000]:
+                            if count_res in [100, 300, 500, 700, 900, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 20000, 25000, 30000]:
                                 curr_time = time.time()
                                 generated_results_time[count_res] = curr_time - \
                                     start_time_join
@@ -191,7 +191,7 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
     return np.array(output), len(g), generated_results_time
 
 
-def join(num_tuples, block_size, no_of_results, is_baseline, expected_similarity_score):
+def join(num_tuples, block_size, no_of_results, is_baseline, expected_similarity_score, start_run_time):
     g = defaultdict(list)
     R_num_blocks = math.ceil(num_tuples / block_size)  # divide by ceiling
     S_num_blocks = math.ceil(num_tuples / block_size)  # divide by ceiling
@@ -199,7 +199,7 @@ def join(num_tuples, block_size, no_of_results, is_baseline, expected_similarity
     # TODO: make this flexible to accept any queries
     conditions = [[1, 1, "<"]]
     join_results, no_of_vertices, generated_results_time = nested_loop_join(
-        num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g, no_of_results, is_baseline, expected_similarity_score)
+        num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g, no_of_results, is_baseline, expected_similarity_score, start_run_time)
 
     graph_list = []
     for item in g.items():
@@ -224,7 +224,7 @@ def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_re
     y_train_r = None
     x_train_s = None
     y_train_s = None
-    start_run = time.time()
+    start_run_time = time.time()
 
     # if not path.exists(RtrainXfilename) or not path.exists(RtrainYfilename):
 
@@ -234,7 +234,7 @@ def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_re
     is_baseline = False
     start = time.time()
     join_results, result_shape, g, no_of_vertices, generated_results_time = join(
-        train_size, block_size, no_of_results, is_baseline, similarity_score)
+        train_size, block_size, no_of_results, is_baseline, similarity_score, start_run_time)
     # print(join_results, result_shape)
     # print("\n\nCut found by Karger's randomized algo is {}".format(
     #     karger_min_cut(g, k, no_of_vertices)))
@@ -346,20 +346,23 @@ def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_re
             key = list(r_pred_group.keys())[0]
             if key in s_pred_group.keys():
                 output, gen_results_time = nested_loop_join_group(
-                    r_pred_group[key], s_pred_group[key], conditions, similarity_score, expected_no_of_results)
+                    r_pred_group[key], s_pred_group[key], conditions, similarity_score, expected_no_of_results, current_output_size, generated_results_time, start_run_time)
+                generated_results_time = gen_results_time
                 if len(output) > 0:
                     join_results = np.concatenate((join_results, output))
-                x_no_results_time.append(gen_results_time)
+                    current_output_size += output
+                # x_no_results_time.append(gen_results_time)
                 del s_pred_group[key]
             del r_pred_group[key]
 
         curr_start_idx = curr_end_idx
 
-    print("generated_results_time:")
-    print(generated_results_time)
+    finish_time = time.time()
+    # print("generated_results_time:")
+    # print(generated_results_time)
 
-    print("x_no_results_time:")
-    print(x_no_results_time)
+    # print("x_no_results_time:")
+    # print(x_no_results_time)
 
     with open(resultfilename, 'w') as f:
         f.write("tuple size:\t\t\t\t" + str(train_size))
@@ -400,25 +403,21 @@ def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_re
         f.write('\n')
         f.write("size of output:" + str(len(join_results)))
         f.write('\n')
-        f.write("whole time:" + str(time.time()-start_run))
-
-    # print("R train accuracy:", str(r_train_acc), "%")
-    # print("R test accuracy:", str(r_test_acc), "%")
-    # print("S train accuracy:", str(s_train_acc), "%")
-    # print("S test accuracy:", str(s_test_acc), "%")
+        f.write("whole time:" + str(finish_time-start_run_time))
 
 
 def runbaseline(num_tuples, block_size, expected_similarity_score, no_of_results=0):
 
     sufflix = "baseline."+str(num_tuples)+'.' + \
-        str(block_size)+'.'+str(no_of_results)
+        str(block_size)+'.'+str(no_of_results) + \
+        '.'+str(expected_similarity_score)
     resultfilename = 'res/' + sufflix
 
     is_baseline = True
 
     start = time.time()
     join_results, result_shape, g, no_of_vertices, generated_results_time = join(
-        num_tuples, block_size, no_of_results, is_baseline, expected_similarity_score)
+        num_tuples, block_size, no_of_results, is_baseline, expected_similarity_score, start)
 
     end = time.time()
     nested_loop_join_time = end-start
@@ -442,5 +441,5 @@ def runbaseline(num_tuples, block_size, expected_similarity_score, no_of_results
             f.write('\n')
 
 
-# runbaseline(1000, 1000, 0.4, 100)
-run(20000, 512, 512, 100, 0.4)
+# runbaseline(3000, 3000, 0.5)
+# run(2000, 1000, 1000, 20, 0.6)
