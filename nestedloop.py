@@ -79,7 +79,9 @@ def nested_loop_join_group(datalistR, datalistS, conditions, expected_similarity
                     #       datalistS[tS][right])
                     res_count += 1
                     total_res_count = current_output_size + res_count
-                    if total_res_count in [100, 300, 500, 700, 900, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 20000, 25000, 30000]:
+                    steps = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 300, 500, 700, 900, 1000, 1100, 1200, 1300, 1400, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500,
+                             9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000, 22000, 23000, 24000, 25000, 26000, 27000, 28000, 29000, 30000]
+                    if total_res_count in steps:
                         curr_time = time.time()
                         generated_results_time[total_res_count] = curr_time - \
                             start_run_time
@@ -153,7 +155,9 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
                             # print(datalistR[tR][left], "----",
                             #       datalistS[tS][right])
                             count_res += 1
-                            if count_res in [100, 300, 500, 700, 900, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 20000, 25000, 30000]:
+                            steps = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 300, 500, 700, 900, 1000, 1100, 1200, 1300, 1400, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500,
+                                     9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000, 22000, 23000, 24000, 25000, 26000, 27000, 28000, 29000, 30000]
+                            if count_res in steps:
                                 curr_time = time.time()
                                 generated_results_time[count_res] = curr_time - \
                                     start_time_join
@@ -350,7 +354,7 @@ def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_re
                 generated_results_time = gen_results_time
                 if len(output) > 0:
                     join_results = np.concatenate((join_results, output))
-                    current_output_size += output
+                    current_output_size += len(output)
                 # x_no_results_time.append(gen_results_time)
                 del s_pred_group[key]
             del r_pred_group[key]
@@ -442,4 +446,4 @@ def runbaseline(num_tuples, block_size, expected_similarity_score, no_of_results
 
 
 # runbaseline(3000, 3000, 0.5)
-# run(2000, 1000, 1000, 20, 0.6)
+run(40000, 100, 512, 10, 0.5)
