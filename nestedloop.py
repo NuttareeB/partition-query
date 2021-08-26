@@ -27,7 +27,6 @@ def load_data(filename):
 
 
 def load_data_batch(filename, bRS, block_size, num_blocks=4):
-    # print("loading batches")
     df = pd.read_csv(filename, skiprows=bRS, nrows=block_size)
     datalist = np.array(df)
     return datalist
@@ -102,7 +101,7 @@ def nested_loop_join_group(datalistR, datalistS, conditions, expected_similarity
     return np.array(output), generated_results_time
 
 
-def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g, no_of_results, is_baseline, expected_similarity_score, start_run_time):
+def nested_loop_join(num_tuples, train_size_blocks, conditions, block_size, R_num_blocks, S_num_blocks, g, no_of_results, is_baseline, expected_similarity_score, start_run_time):
     global all_R
     global all_S
     global count_res
@@ -110,92 +109,110 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
     max_similarity_score = 0
     generated_results_time = {}
     start_time_join = start_run_time
+    #datalistR = np.array([])
+    datalistR_temp = []
+    #datalistR = np.array([])
     # each block
-    for bR in range(0, R_num_blocks * block_size, block_size):
+    # training size variable: num_tuples
+    batch_of_blocks = math.ceil(train_size_blocks / block_size)  # some multiple of blocks in R
+    #print("Number of batches of blocks: ",batch_of_blocks)
+    #for bR in range(0, R_num_blocks * block_size, block_size):
+    for bR in range(0, R_num_blocks * block_size, batch_of_blocks*block_size):
         # call function to get 1 block of data from R
-        datalistR = load_data_batch(R, bR, block_size, R_num_blocks)
-        if isinstance(all_R, np.ndarray):
-            all_R = np.concatenate((all_R, datalistR), 0)
-        else:
-            all_R = datalistR
-        for bS in range(0, S_num_blocks * block_size, block_size):
-            # call function to get 1 block of data from S
-            datalistS = load_data_batch(S, bS, block_size, S_num_blocks)
-            if bR == 0:
-                if isinstance(all_S, np.ndarray):
-                    all_S = np.concatenate((all_S, datalistS), 0)
-                else:
-                    all_S = datalistS
-            # each tuple
-            for tR in range(0, block_size):
-                for tS in range(0, block_size):
-                    sign = conditions[0][2]
-                    left = conditions[0][0]
-                    right = conditions[0][1]
-                    # TODO: remove hard code
-
-                    if tR < len(datalistR) and tS < len(datalistS):
-
-                        # similarity_score = normalized_levenshtein.distance(
-                        #     datalistR[tR][left], datalistS[tS][right])
-                        similarity_score = 0
-                        try:
-                            similarity_score = cosine.similarity_profiles(
-                                cosine.get_profile(datalistR[tR][left]), cosine.get_profile(datalistS[tS][right]))
-                        except ZeroDivisionError as error:
-                            # Output expected ZeroDivisionErrors.
-                            print(
-                                "error occur when calculating the similarity score")
-                            print(error)
-                        except Exception as exception:
-                            # Output unexpected Exceptions.
-                            print(error)
-#                            Logging.log_exception(exception, False)
-                        if similarity_score > expected_similarity_score:
-                            # print(datalistR[tR][left], "----",
-                            #       datalistS[tS][right])
-                            count_res += 1
-                            steps = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 300, 500, 700, 900, 1000, 1100, 1200, 1300, 1400, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500,
-                                     9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000, 22000, 23000, 24000, 25000, 26000, 27000, 28000, 29000, 30000]
-                            if count_res in steps:
-                                curr_time = time.time()
-                                generated_results_time[count_res] = curr_time - \
-                                    start_time_join
-
-                            # if similarity_score > max_similarity_score:
-                            #     max_similarity_score = similarity_score
-                            #     print(similarity_score, ": ",
-                            #           datalistR[tR][left], ": ", datalistS[tS][right])
-                            # if get_operator(sign)(datalistR[tR][left], datalistS[tS][right]):
-                            tuple_r = datalistR[tR]
-                            tuple_s = datalistS[tS]
-
-                            # add egeds to graph
-                            # src = "r" + str(tuple_r[0]) + "," + str(tuple_r[1])
-                            # dest = "s" + \
-                            #     str(tuple_s[0]) + "," + str(tuple_s[1])
-                            src = "r" + str(tuple_r[0])
-                            dest = "s" + str(tuple_s[0])
-                            # edge = Edge(src, dest)
-                            # g.vertices.add(src)
-                            # g.vertices.add(dest)
-                            # g.edges.append(edge)
-                            g[src].append(dest)
-                            g[dest].append(src)
-
-                            # update output
-                            output.append(np.concatenate(
-                                (tuple_r, tuple_s), axis=0))
-                            if is_baseline and no_of_results != 0 and count_res >= no_of_results:
-                                return np.array(output), len(g), generated_results_time
+        for b in range(bR, bR+(batch_of_blocks*block_size)):
+			#print(b)
+            datalistR_temp.append(load_data_batch(R, b, block_size, R_num_blocks))
+			#print(len(datalistR_temp))
+        for i in range(0, batch_of_blocks):
+            # print(b)
+            datalistR = datalistR_temp[i]
+        # print(len(datalistR_temp))
+		#datalistR = load_data_batch(R, bR, block_size, R_num_blocks)
+        #datalistR = np.array(datalistR_temp)
+        
+		#print(datalistR[0])
+            if isinstance(all_R, np.ndarray):
+                all_R = np.concatenate((all_R, datalistR), 0)
+            else:
+                all_R = datalistR
+            for bS in range(0, S_num_blocks * block_size, block_size):
+                # call function to get 1 block of data from S
+                datalistS = load_data_batch(S, bS, block_size, S_num_blocks)
+                if bR == 0:
+                    if isinstance(all_S, np.ndarray):
+                        all_S = np.concatenate((all_S, datalistS), 0)
                     else:
-                        print("Index out of bound:", "r", tR, ",",
-                              len(datalistR), "s",  tS, ",", len(datalistS))
+                        all_S = datalistS
+                # each tuple
+                for tR in range(0, block_size):
+                    for tS in range(0, block_size):
+                        sign = conditions[0][2]
+                        left = conditions[0][0]
+                        right = conditions[0][1]
+                        # TODO: remove hard code
+
+                        if tR < len(datalistR) and tS < len(datalistS):
+
+                            # similarity_score = normalized_levenshtein.distance(
+                            #     datalistR[tR][left], datalistS[tS][right])
+                            similarity_score = 0
+                            try:
+                                similarity_score = cosine.similarity_profiles(
+                                    cosine.get_profile(datalistR[tR][left]), cosine.get_profile(datalistS[tS][right]))
+                            except ZeroDivisionError as error:
+                                # Output expected ZeroDivisionErrors.
+                                print(
+                                    "error occur when calculating the similarity score")
+                                print(error)
+                            except Exception as exception:
+                                # Output unexpected Exceptions.
+                                print("exception")
+    #                            Logging.log_exception(exception, False)
+                            if similarity_score > expected_similarity_score:
+                                # print(datalistR[tR][left], "----",
+                                #       datalistS[tS][right])
+                                count_res += 1
+                                steps = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 300, 500, 700, 900, 1000, 1100, 1200, 1300, 1400, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500,
+                                         9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000, 22000, 23000, 24000, 25000, 26000, 27000, 28000, 29000, 30000]
+                                if count_res in steps:
+                                    curr_time = time.time()
+                                    generated_results_time[count_res] = curr_time - \
+                                        start_time_join
+
+                                # if similarity_score > max_similarity_score:
+                                #     max_similarity_score = similarity_score
+                                #     print(similarity_score, ": ",
+                                #           datalistR[tR][left], ": ", datalistS[tS][right])
+                                # if get_operator(sign)(datalistR[tR][left], datalistS[tS][right]):
+                                tuple_r = datalistR[tR]
+                                tuple_s = datalistS[tS]
+
+                                # add egeds to graph
+                                # src = "r" + str(tuple_r[0]) + "," + str(tuple_r[1])
+                                # dest = "s" + \
+                                #     str(tuple_s[0]) + "," + str(tuple_s[1])
+                                src = "r" + str(tuple_r[0])
+                                dest = "s" + str(tuple_s[0])
+                                # edge = Edge(src, dest)
+                                # g.vertices.add(src)
+                                # g.vertices.add(dest)
+                                # g.edges.append(edge)
+                                g[src].append(dest)
+                                g[dest].append(src)
+
+                                # update output
+                                output.append(np.concatenate(
+                                    (tuple_r, tuple_s), axis=0))
+                                if is_baseline and no_of_results != 0 and count_res >= no_of_results:
+                                    return np.array(output), len(g), generated_results_time
+                        else:
+                            print("Index out of bound:", "r", tR, ",",
+                                  len(datalistR), "s",  tS, ",", len(datalistS))
     print("Result count:", count_res)
     return np.array(output), len(g), generated_results_time
 
 
-def join(num_tuples, block_size, no_of_results, is_baseline, expected_similarity_score, start_run_time):
+def join(num_tuples, train_size_blocks, block_size, no_of_results, is_baseline, expected_similarity_score, start_run_time):
     g = defaultdict(list)
     R_num_blocks = math.ceil(num_tuples / block_size)  # divide by ceiling
     S_num_blocks = math.ceil(num_tuples / block_size)  # divide by ceiling
@@ -203,7 +220,7 @@ def join(num_tuples, block_size, no_of_results, is_baseline, expected_similarity
     # TODO: make this flexible to accept any queries
     conditions = [[1, 1, "<"]]
     join_results, no_of_vertices, generated_results_time = nested_loop_join(
-        num_tuples, conditions, block_size, R_num_blocks, S_num_blocks, g, no_of_results, is_baseline, expected_similarity_score, start_run_time)
+        num_tuples, train_size_blocks, conditions, block_size, R_num_blocks, S_num_blocks, g, no_of_results, is_baseline, expected_similarity_score, start_run_time)
 
     graph_list = []
     for item in g.items():
@@ -238,7 +255,7 @@ def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_re
     is_baseline = False
     start = time.time()
     join_results, result_shape, g, no_of_vertices, generated_results_time = join(
-        train_size, block_size, no_of_results, is_baseline, similarity_score, start_run_time)
+        train_size, train_size_blocks, block_size, no_of_results, is_baseline, similarity_score, start_run_time)
     # print(join_results, result_shape)
     # print("\n\nCut found by Karger's randomized algo is {}".format(
     #     karger_min_cut(g, k, no_of_vertices)))
@@ -410,9 +427,10 @@ def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_re
         f.write("whole time:" + str(finish_time-start_run_time))
 
 
-def runbaseline(num_tuples, block_size, expected_similarity_score, no_of_results=0):
+def runbaseline(num_tuples, train_size_blocks, block_size, expected_similarity_score, no_of_results=0):
 
     sufflix = "baseline."+str(num_tuples)+'.' + \
+		str(train_size_blocks)+'.'+ \
         str(block_size)+'.'+str(no_of_results) + \
         '.'+str(expected_similarity_score)
     resultfilename = 'res/' + sufflix
@@ -421,7 +439,7 @@ def runbaseline(num_tuples, block_size, expected_similarity_score, no_of_results
 
     start = time.time()
     join_results, result_shape, g, no_of_vertices, generated_results_time = join(
-        num_tuples, block_size, no_of_results, is_baseline, expected_similarity_score, start)
+        num_tuples, train_size_blocks, block_size, no_of_results, is_baseline, expected_similarity_score, start)
 
     end = time.time()
     nested_loop_join_time = end-start
@@ -446,4 +464,4 @@ def runbaseline(num_tuples, block_size, expected_similarity_score, no_of_results
 
 
 # runbaseline(3000, 3000, 0.5)
-run(40000, 100, 512, 10, 0.5)
+#run(4000, 600, 512, 10, 0.5)

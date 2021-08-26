@@ -1,0 +1,5 @@
+import numpy as np
+from nestedloop import run
+
+#run(2000, 50, 1000)
+run(40000, 4000, 512, 130, 0.4, 40000)

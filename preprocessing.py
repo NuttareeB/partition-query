@@ -74,9 +74,9 @@ def preprocessing_releasedate(datalist, parents, relation_type, k, block_size, t
     # print(newdatalist[:150])
     # print(bin_data)
 
-    bin_data.to_csv(trainXfilename, sep=",", index=False)
-    pd.DataFrame(labels, columns=["label"]).to_csv(
-        trainYfilename, sep=",", index=False)
+    #bin_data.to_csv(trainXfilename, sep=",", index=False)
+    #pd.DataFrame(labels, columns=["label"]).to_csv(
+    #    trainYfilename, sep=",", index=False)
 
     plot(newdatalist[:, 2:5], newdatalist[:, 5], relation_type)
     return bin_data, labels
@@ -127,9 +127,9 @@ def preprocessing_IMDB(datalist, train_size, parents, relation_type, trainXfilen
             joinable_count += 1
             labels.append(parents[key])
 
-    bin_data.to_csv(trainXfilename, sep=",", index=False)
-    pd.DataFrame(labels, columns=["label"]).to_csv(
-        trainYfilename, sep=",", index=False)
+    #bin_data.to_csv(trainXfilename, sep=",", index=False)
+    #pd.DataFrame(labels, columns=["label"]).to_csv(
+    #    trainYfilename, sep=",", index=False)
 
     return bin_data, labels, max_rate, min_rate
 
@@ -195,9 +195,9 @@ def preprocessing_OMDB(datalist, train_size, parents, relation_type, trainXfilen
             joinable_count += 1
             labels.append(parents[key])
 
-    bin_data.to_csv(trainXfilename, sep=",", index=False)
-    pd.DataFrame(labels, columns=["label"]).to_csv(
-        trainYfilename, sep=",", index=False)
+    #bin_data.to_csv(trainXfilename, sep=",", index=False)
+    #pd.DataFrame(labels, columns=["label"]).to_csv(
+    #    trainYfilename, sep=",", index=False)
 
     return bin_data, labels, max_rate, min_rate
 
