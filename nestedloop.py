@@ -52,8 +52,8 @@ count_res = 0
 def nested_loop_join_group(datalistR, datalistS, conditions, expected_similarity_score, expected_no_of_results, current_output_size, generated_results_time, start_run_time):
     datalistR = np.array(datalistR)
     datalistS = np.array(datalistS)
-    print("nested_loop_join_group len datalistR:", len(datalistR))
-    print("nested_loop_join_group len datalistS:", len(datalistS))
+    # print("nested_loop_join_group len datalistR:", len(datalistR))
+    # print("nested_loop_join_group len datalistS:", len(datalistS))
     output = []
     # generated_results_time = {}
     res_count = 0
@@ -79,7 +79,7 @@ def nested_loop_join_group(datalistR, datalistS, conditions, expected_similarity
                     #       datalistS[tS][right])
                     res_count += 1
                     total_res_count = current_output_size + res_count
-                    steps = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 300, 500, 700, 900, 1000, 1100, 1200, 1300, 1400, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500,
+                    steps = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500,
                              9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000, 22000, 23000, 24000, 25000, 26000, 27000, 28000, 29000, 30000]
                     if total_res_count in steps:
                         curr_time = time.time()
@@ -155,7 +155,7 @@ def nested_loop_join(num_tuples, conditions, block_size, R_num_blocks, S_num_blo
                             # print(datalistR[tR][left], "----",
                             #       datalistS[tS][right])
                             count_res += 1
-                            steps = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 300, 500, 700, 900, 1000, 1100, 1200, 1300, 1400, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500,
+                            steps = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500,
                                      9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000, 22000, 23000, 24000, 25000, 26000, 27000, 28000, 29000, 30000]
                             if count_res in steps:
                                 curr_time = time.time()
@@ -335,10 +335,10 @@ def run(total_tuples, train_size, block_size, kmin_k, similarity_score, no_of_re
             if s_label != "unjoinable":
                 s_pred_group[s_label].append(s_test_data[i])
 
-        print("r pred_group")
-        print(len(r_pred_group), r_pred_group.keys())
-        print("s pred_group")
-        print(len(s_pred_group), s_pred_group.keys())
+        # print("r pred_group")
+        # print(len(r_pred_group), r_pred_group.keys())
+        # print("s pred_group")
+        # print(len(s_pred_group), s_pred_group.keys())
 
         current_output_size = len(join_results)
         expected_no_of_results = no_of_results - \
@@ -446,4 +446,4 @@ def runbaseline(num_tuples, block_size, expected_similarity_score, no_of_results
 
 
 # runbaseline(3000, 3000, 0.5)
-run(40000, 100, 512, 10, 0.5)
+# run(40000, 100, 512, 10, 0.5)
